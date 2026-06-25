@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AREA15 PROD DEPT Digital Sign-In</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f4f4f4; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+        th, td { border: 1px solid #ccc; padding: 8px; text-align: left; vertical-align: top; }
+        th { background: #333; color: white; }
+        input, select, textarea { width: 100%; box-sizing: border-box; }
+        button { padding: 10px; margin: 5px; background: #0066cc; color: white; border: none; cursor: pointer; }
+        .delete-btn { background: #cc0000; }
+        .day-off-btn { background: #008800; }
+        .submit-btn { background: #28a745; font-weight: bold; }
+        .day { border: 2px solid #0066cc; padding: 15px; margin-bottom: 25px; background: white; border-radius: 8px; }
+        .day-controls { margin-top: 10px; }
+        .day-off-banner { background: #fff3cd; color: #856404; padding: 12px; text-align: center; font-weight: bold; border: 2px solid #ffc107; margin: 10px 0; }
+        .error { border: 2px solid red !important; background: #ffe6e6; }
+        .weekly-total { font-size: 1.4em; font-weight: bold; text-align: center; margin: 30px 0; padding: 15px; background: #e6f0ff; border: 3px solid #0066cc; border-radius: 8px; }
+        .instructions { background: #e6f0ff; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+    <h1>AREA15 Production Department Sign-In Sheet</h1>
+
+    <div class="instructions">
+        <strong>How to use:</strong><br>
+        &bull; Fill out at the end of each shift<br>
+        &bull; Click <strong>&#128190; Save Progress</strong> before closing &mdash; your entries are saved on this device and will still be here when you come back<br>
+        &bull; Return later &rarr; click <strong>&#128194; Load Saved</strong> to pick up where you left off<br>
+        &bull; When your week is complete &rarr; click <strong>&#10003; Validate &amp; Send</strong> to submit your timesheet &mdash; a copy will automatically be sent to your email for your records
+    </div>
+
+    <div>
+        <label>Employee Name:
+            <select id="employee" style="width:220px;display:inline">
+                <option value="">-- Select --</option>
+                <option>Brandon Fonville</option>
+                <option>Chase Ballard</option>
+                <option>Cody Yeager</option>
+                <option>Jeriel Askew</option>
+                <option>Nicholas Padilla</option>
+                <option>Ryan Miller</option>
+            </select>
+        </label><br><br>
+        <button onclick="saveData()">&#128190; Save Progress</button>
+        <button onclick="loadData()">&#128194; Load Saved</button>
+        <button class="submit-btn" onclick="validateAndSend()">&#10003; Validate &amp; Send</button>
+    </div>
+
+    <br>
+    <div id="days"></div>
+
+    <div class="weekly-total">
+        <strong>Weekly Total Hours:</strong> <span id="weekly-total">0.00</span>
+    </div>
+
+<script>
+    // These two lists must exactly match Master's "Department Code Labor Distribution Options"
+    // and "Areas" lists in the Excel workbook - if those ever change there, update them here too
+    // so the CSV pastes in cleanly without mismatches.
+    var DEPT_CODES = ["32 Co-Productions", "35 Private Events", "38 Internal Produced",
+                       "39 Event Production", "310 DJ Events", "341 Experiences", "510 Training"];
+
+    var EMPLOYEE_EMAILS = {
+        "Brandon Fonville": "bfonville30@gmail.com",
+        "Chase Ballard":    "chaballard@gmail.com",
+        "Cody Yeager":      "codyjyeager@gmail.com",
+        "Jeriel Askew":     "jerinova@gmail.com",
+        "Nicholas Padilla": "nickpad19@gmail.com",
+        "Ryan Miller":      "imryanmiller@gmail.com"
+    };    var AREAS = ["Portal", "The Wall", "Asylum", "Sanctuary", "Oddyssey", "A Lot", "The Quarters",
+                 "747 Plaza", "Spine", "Z2", "Campus", "175"];
+
+    // Pulled from the real Labor Details history across everyone's timesheets - "Setup, event,
+    // strike" alone covers most days. Add to this list any time a new common pattern shows up.
+    var ACTIVITIES = ["Setup, event, strike", "Setup", "Event", "Strike", "Soundcheck",
+                       "Audio troubleshooting", "Cable maintenance", "Organize", "Open"];
+
+    function activityOptions(selected) {
+        var html = '<option value="">-- Select --</option>';
+        ACTIVITIES.forEach(function(a) {
+            html += '<option' + (a === selected ? ' selected' : '') + '>' + a + '</option>';
+        });
+        var isOther = selected && ACTIVITIES.indexOf(selected) === -1;
+        html += '<option value="__other__"' + (isOther ? ' selected' : '') + '>Other (type below)</option>';
+        return html;
+    }
+
+    // Snapshot of Events List from the workbook (taken 6/22/2026). This goes stale as new
+    // events get booked - refresh it periodically by sending this file back for an update, or ask
+    // for a fresh snapshot whenever Events List gets a big batch of new Tripleseat rows.
+    var EVENTS_SNAPSHOT = [{"date":"5/1/2026","name":"Mac Demarco"},{"date":"5/1/2026","name":"MAGIC THE GATHERING 2026 (4WALL)"},{"date":"5/2/2026","name":"The Growlers"},{"date":"5/2/2026","name":"Planet Perreo (4WALL)"},{"date":"5/3/2026","name":"TENT REMOVAL"},{"date":"5/3/2026","name":"R+Co Business Education - Load in/Testing"},{"date":"5/4/2026","name":"TENT REMOVAL"},{"date":"5/4/2026","name":"R+Co Business Education - Day 1"},{"date":"5/5/2026","name":"TENT REMOVAL"},{"date":"5/5/2026","name":"R+Co Business Education - Day 2"},{"date":"5/5/2026","name":"ServiceNow GmbH Reception"},{"date":"5/6/2026","name":"TENT REMOVAL"},{"date":"5/6/2026","name":"R+Co Business Education - Day 3"},{"date":"5/7/2026","name":"TENT REMOVAL"},{"date":"5/7/2026","name":"Panorama Mortgage Group, LLC-Day 1"},{"date":"5/7/2026","name":"Runway Cinema - MAY"},{"date":"5/7/2026","name":"TAG Alliances via Cohera"},{"date":"5/8/2026","name":"TENT REMOVAL"},{"date":"5/8/2026","name":"Panorama Mortgage Group, LLC-Day 2"},{"date":"5/8/2026","name":"House Party"},{"date":"5/9/2026","name":"TENT REMOVAL"},{"date":"5/9/2026","name":"Sip & Spoil: Mother's Day"},{"date":"5/9/2026","name":"WITCHZ - Enter Afterlife World Tour 2026"},{"date":"5/10/2026","name":"TENT REMOVAL"},{"date":"5/10/2026","name":"Manifest Academy"},{"date":"5/10/2026","name":"VGK Game 4 Watch Party (Programming)"},{"date":"5/10/2026","name":"VGK Game 4 Watch Party - The Wall Platter Drop"},{"date":"5/11/2026","name":"TENT REMOVAL"},{"date":"5/12/2026","name":"TENT REMOVAL"},{"date":"5/12/2026","name":"RAVE BAE"},{"date":"5/13/2026","name":"TENT REMOVAL"},{"date":"5/13/2026","name":"Lunch & Meet: Bonnie, President"},{"date":"5/13/2026","name":"Pride Bingo"},{"date":"5/13/2026","name":"Dreamciscle - EDC Fashion Show"},{"date":"5/14/2026","name":"TENT REMOVAL"},{"date":"5/14/2026","name":"In Pour Taste Shoot"},{"date":"5/14/2026","name":"Runway Cinema - MAY"},{"date":"5/14/2026","name":"Karaoke"},{"date":"5/15/2026","name":"TENT REMOVAL"},{"date":"5/15/2026","name":"NecTr Community Athletics | Award Banquet Celebration"},{"date":"5/16/2026","name":"TENT REMOVAL"},{"date":"5/16/2026","name":"Banks Wedding Anniversary"},{"date":"5/16/2026","name":"BLOCK PARTY"},{"date":"5/16/2026","name":"Waitress w/ Spring Breeding, Stolen Street Signs"},{"date":"5/17/2026","name":"TENT REMOVAL"},{"date":"5/17/2026","name":"Family Rave"},{"date":"5/18/2026","name":"TENT REMOVAL"},{"date":"5/19/2026","name":"TENT REMOVAL"},{"date":"5/19/2026","name":"Alienware Dell Tech World Reception"},{"date":"5/20/2026","name":"TENT REMOVAL"},{"date":"5/20/2026","name":"Fudale Tasting"},{"date":"5/21/2026","name":"TENT REMOVAL"},{"date":"5/21/2026","name":"Runway Cinema - MAY"},{"date":"5/22/2026","name":"LOUIEJAYXX w/ My Bad & more (4WALL) - Twisted Promotions"},{"date":"5/22/2026","name":"Funkbox Las Vegas w/ Tony Touch & Jellybean Benitez"},{"date":"5/23/2026","name":"David Williams-50th Birthday celebration"},{"date":"5/24/2026","name":"Summer Glow Up - Load In Day"},{"date":"5/24/2026","name":"Chanelle Pohl-High School Graduation"},{"date":"5/25/2026","name":"Summer Glow Up (2) Day Event"},{"date":"5/26/2026","name":"Summer Glow Up - Day 2"},{"date":"5/27/2026","name":"AREA15 - New Hire Orientation"},{"date":"5/28/2026","name":"Runway Cinema - MAY"},{"date":"5/28/2026","name":"Karaoke"},{"date":"5/29/2026","name":"Video Game Rave"},{"date":"5/30/2026","name":"Bingo Loco - Name That Song"},{"date":"5/30/2026","name":"Cargill-Awards Ceremony"},{"date":"5/31/2026","name":"Empire Med Group"},{"date":"6/1/2026","name":"GHOST\u00c2\u00ae Lifestyle"},{"date":"6/2/2026","name":"AREA15 - ART! of Sales Training"},{"date":"6/3/2026","name":"AREA15 - ART! of Sales Training"},{"date":"6/5/2026","name":"Alpha Wolf: Let It Rip USA Tour w/ Gideon, Mugshot, Resolve"},{"date":"6/5/2026","name":"Ouija Macc"},{"date":"6/6/2026","name":"The Emo Night Tour"},{"date":"6/6/2026","name":"Levels N Stuff"},{"date":"6/7/2026","name":"Rave Jesus 1H"},{"date":"6/7/2026","name":"Rave Jesus 2H"},{"date":"6/8/2026","name":"Museum of Ice Cream - Staff Training Day"},{"date":"6/9/2026","name":"Museum of Ice Cream - Staff Training Day"},{"date":"6/9/2026","name":"Fudale-Digital Branding Walkthrough"},{"date":"6/10/2026","name":"Museum of Ice Cream - Staff Training Day"},{"date":"6/10/2026","name":"Fudale-Digital Branding Walkthrough"},{"date":"6/10/2026","name":"Pride Bingo"},{"date":"6/11/2026","name":"Museum of Ice Cream - Staff Training Day"},{"date":"6/11/2026","name":"Karaoke"},{"date":"6/12/2026","name":"Dack Janiels (4WALL)"},{"date":"6/12/2026","name":"Chassi x Hexxa (4WALL)"},{"date":"6/13/2026","name":"Dayshift"},{"date":"6/13/2026","name":"Chrissy Chlapecka"},{"date":"6/14/2026","name":"Manifest Academy"},{"date":"6/15/2026","name":"Museum of Ice Cream - Staff Training Day"},{"date":"6/15/2026","name":"UNLV Native American Youth Camp Catering"},{"date":"6/16/2026","name":"Shure, Inc."},{"date":"6/17/2026","name":"Museum of Ice Cream - Staff Training Day"},{"date":"6/18/2026","name":"Museum of Ice Cream - Staff Training Day"},{"date":"6/18/2026","name":"Grounded Grills Shoot"},{"date":"6/18/2026","name":"Off the Wall Comedy"},{"date":"6/19/2026","name":"Juneteenth w/ Omega Mart"},{"date":"6/19/2026","name":"Daft Punk Night"},{"date":"6/20/2026","name":"Flights & Fathers: Celebrate Dad"},{"date":"6/20/2026","name":"40th Birthday Party"},{"date":"6/21/2026","name":"Family Rave"},{"date":"6/22/2026","name":"The Results Companies LLC d/b/a ResultsCX"},{"date":"6/24/2026","name":"AREA15 - New Hire Orientation"},{"date":"6/25/2026","name":"Boxable Company Party"},{"date":"6/25/2026","name":"Karaoke"},{"date":"6/26/2026","name":"Planet Perreo (4WALL)"},{"date":"6/27/2026","name":"Women Build Vegas Night"},{"date":"6/27/2026","name":"ISI -Live Art Auction"},{"date":"6/27/2026","name":"Club Nevermore LA presents Eddie Escalante"},{"date":"7/1/2026","name":"Turnover"},{"date":"7/2/2026","name":"AREA15 - Fourth of July Summer BBQ"},{"date":"7/3/2026","name":"Red White & Boots Mixer"},{"date":"7/3/2026","name":"RVLTN (4WALL) - 1H"},{"date":"7/4/2026","name":"Red White Battle: America's best dancers"},{"date":"7/4/2026","name":"SAYMYNAME / Hi I'm Ghost / Vastive (4WALL)"},{"date":"7/4/2026","name":"RVLTN (4WALL) - 1H"},{"date":"7/6/2026","name":"Wave Makers Community"},{"date":"7/7/2026","name":"Destination Fabulous Site and Tasting"},{"date":"7/8/2026","name":"Fuerza Regida pop-up trailer"},{"date":"7/8/2026","name":"Kirsten Baron"},{"date":"7/8/2026","name":"Pride Bingo"},{"date":"7/9/2026","name":"Karaoke"},{"date":"7/9/2026","name":"AMS via Hello!"},{"date":"7/10/2026","name":"Popdarts LOAD IN"},{"date":"7/10/2026","name":"Ariel Helwani presented by FRE"},{"date":"7/10/2026","name":"NBA Summer League Rookie reception"},{"date":"7/10/2026","name":"Sploinky Rave: Las Vegas"},{"date":"7/11/2026","name":"First Birthday Party"},{"date":"7/11/2026","name":"Popdarts West Coast Wild Card Event"},{"date":"7/11/2026","name":"60th Birthday Party"},{"date":"7/11/2026","name":"Sopac Basketball Team Outing"},{"date":"7/11/2026","name":"Twisted Promotions (4WALL)"},{"date":"7/11/2026","name":"Klub Nocturno"},{"date":"7/12/2026","name":"Manifest Academy"},{"date":"7/14/2026","name":"Crescent Hotels & Resorts Reception"},{"date":"7/15/2026","name":"Wipfli Advisory Teambuilding event"},{"date":"7/15/2026","name":"Omninet Property Management, Inc"},{"date":"7/16/2026","name":"Proofpoint Workshop"},{"date":"7/16/2026","name":"Fulton Lee - Sing With Me Tour 2026"},{"date":"7/17/2026","name":"Baby Shower"},{"date":"7/17/2026","name":"CINTAS Celebration"},{"date":"7/17/2026","name":"Brainrack"},{"date":"7/17/2026","name":"La Pista (4WALL)"},{"date":"7/18/2026","name":"Bingo Loco - Name That Song"},{"date":"7/18/2026","name":"Leidos Family Event"},{"date":"7/18/2026","name":"Publicly ticketed event: Improvised burlesque murder mystery with audience participation"},{"date":"7/19/2026","name":"Family Rave"},{"date":"7/19/2026","name":"KIDS Carnival - Choreographer's Showcase"},{"date":"7/20/2026","name":"Deloitte Reception"},{"date":"7/21/2026","name":"Carnival - Choreographer's Showcase"},{"date":"7/22/2026","name":"MCW-Fudale Events"},{"date":"7/23/2026","name":"Karaoke"},{"date":"7/23/2026","name":"Innovative Consulting & Marketing"},{"date":"7/24/2026","name":"Chromeo & A-Trak - 1H"},{"date":"7/24/2026","name":"Planet Perreo (4WALL)"},{"date":"7/25/2026","name":"ISI -Live Art Auction"},{"date":"7/25/2026","name":"Simp City - 2H"},{"date":"7/25/2026","name":"Twisted Promotions (4WALL)"},{"date":"7/28/2026","name":"Kissing Candice"},{"date":"7/29/2026","name":"AREA15 - New Hire Orientation"},{"date":"7/29/2026","name":"The Ex-Faces"},{"date":"7/30/2026","name":"Cengage Learning via Hello!"},{"date":"7/30/2026","name":"Local Band Showcase - 2H"},{"date":"7/31/2026","name":"Wilson Elser Moskowitz Edelman & Dicker Family Event"},{"date":"7/31/2026","name":"Electric Feels"},{"date":"7/31/2026","name":"PYKE (4WALL) - 1H"},{"date":"8/1/2026","name":"Only Fire"},{"date":"8/1/2026","name":"House of Funk"},{"date":"8/2/2026","name":"Stadium Dance Entertainment"},{"date":"8/3/2026","name":"SYSDIG Reception"},{"date":"8/4/2026","name":"Axonius Reception and Book Signing"},{"date":"8/4/2026","name":"Client TBD via Discover IT Yourself"},{"date":"8/5/2026","name":"Xona Systems Happy Hour"},{"date":"8/5/2026","name":"OAK Vegas Party via Evolve"},{"date":"8/6/2026","name":"Solana Foundation"},{"date":"8/6/2026","name":"EXP Journeys"},{"date":"8/6/2026","name":"Karaoke"},{"date":"8/6/2026","name":"Client TBD via Destination Fabulous"},{"date":"8/7/2026","name":"40th Birthday Party"},{"date":"8/7/2026","name":"ART HEART FASHION - LOAD IN"},{"date":"8/7/2026","name":"Twisted Promotions (4WALL) - 1H"},{"date":"8/7/2026","name":"Golden Era Rave"},{"date":"8/8/2026","name":"Elopement Dinner"},{"date":"8/8/2026","name":"ART HEART FASHION - LOAD IN"},{"date":"8/8/2026","name":"The Medium Roast"},{"date":"8/9/2026","name":"Manifest Academy"},{"date":"8/9/2026","name":"ART HEART FASHION"},{"date":"8/10/2026","name":"Ringba Mastermind Class"},{"date":"8/10/2026","name":"FEM&M x ASTRID"},{"date":"8/12/2026","name":"Pride Bingo"},{"date":"8/12/2026","name":"Lake Street Dive - 2H"},{"date":"8/13/2026","name":"Lake Street Dive - 2H"},{"date":"8/14/2026","name":"MNTN Digital"},{"date":"8/14/2026","name":"Howard Hughes Contractors Appreciation Event"},{"date":"8/14/2026","name":"Lake Street Dive - 1H"},{"date":"8/14/2026","name":"The Emo Night Tour"},{"date":"8/15/2026","name":"Dayshift"},{"date":"8/15/2026","name":"Lake Street Dive - 1H"},{"date":"8/15/2026","name":"El Malilla (4WALL) (RVLTN)"},{"date":"8/15/2026","name":"Sisto & Vicious (4WALL) (Twisted)"},{"date":"8/16/2026","name":"Family Rave"},{"date":"8/16/2026","name":"Upon Your Dead Body - The Wall - 2H"},{"date":"8/17/2026","name":"BRKN THRU SERIES Day 1 \u00e2\u0080\u0093 Pickups / Activation Content (Show-Specific)"},{"date":"8/18/2026","name":"BRKN THRU SERIES Day 2 \u00e2\u0080\u0093 Load-In & Technical Rehearsal"},{"date":"8/18/2026","name":"Upon Your Dead Body - The Wall - 2H"},{"date":"8/19/2026","name":"BRKN THRU SERIES Day 3 \u00e2\u0080\u0093 Competition Filming"},{"date":"8/19/2026","name":"AREA15 - New Hire Orientation"},{"date":"8/20/2026","name":"Karaoke"},{"date":"8/20/2026","name":"Leisure Group via V5"},{"date":"8/21/2026","name":"Gareth Emery's LSR/CITY X - 1H"},{"date":"8/21/2026","name":"Slushii - 1H"},{"date":"8/21/2026","name":"Networking via Event Pro llc"},{"date":"8/22/2026","name":"Special occasion - graduation party"},{"date":"8/22/2026","name":"Howard - Bar Mitzvah Party 2H"},{"date":"8/22/2026","name":"Gareth Emery's LSR/CITY X - 1H"},{"date":"8/22/2026","name":"InMode"},{"date":"8/22/2026","name":"Cup of Joe (4WALL)"},{"date":"8/22/2026","name":"Surely Tempo"},{"date":"8/24/2026","name":"Breakfast + General Session for 250ppl"},{"date":"8/24/2026","name":"Shaikh Saeed Group Launch Party via MC&A"},{"date":"8/25/2026","name":"Anees"},{"date":"8/25/2026","name":"Cisco Celebration"},{"date":"8/26/2026","name":"DRVN After Dark"},{"date":"8/27/2026","name":"Scoochie Boochie"},{"date":"8/28/2026","name":"27 Virtual"},{"date":"8/28/2026","name":"Gareth Emery's LSR/CITY X - 1H"},{"date":"8/28/2026","name":"It's A 2000s Party"},{"date":"8/29/2026","name":"ISI -Live Art Auction"},{"date":"8/29/2026","name":"Gareth Emery's LSR/CITY X - 1H"},{"date":"8/29/2026","name":"Planet Perreo (4WALL)"},{"date":"8/29/2026","name":"Mongrel (4WALL / Twisted)"},{"date":"8/30/2026","name":"Connors Wedding Reception"},{"date":"9/1/2026","name":"Bandwidth"},{"date":"9/3/2026","name":"Karaoke"},{"date":"9/4/2026","name":"Ravehouse (4WALL)"},{"date":"9/5/2026","name":"Ravehouse (4WALL)"},{"date":"9/5/2026","name":"House Party - 1H"},{"date":"9/6/2026","name":"White Party Event - Sunset Party"},{"date":"9/6/2026","name":"Private Birthday Event"},{"date":"9/6/2026","name":"Anime Night Mart -  Rave Only"},{"date":"9/6/2026","name":"Everyday People: Las Vegas (4WALL)"},{"date":"9/9/2026","name":"Pride Bingo"},{"date":"9/9/2026","name":"Gregory Alan Isakov - 2H"},{"date":"9/10/2026","name":"Gregory Alan Isakov - 2H"},{"date":"9/10/2026","name":"Hail The Sun"},{"date":"9/11/2026","name":"Gregory Alan Isakov - 1H"},{"date":"9/11/2026","name":"Gothicumbia (4WALL) (RVLTN)"},{"date":"9/12/2026","name":"Bingo Loco - Name That Song"},{"date":"9/12/2026","name":"Gregory Alan Isakov - 2H"},{"date":"9/12/2026","name":"Twisted Promotions (4WALL) - 1H"},{"date":"9/12/2026","name":"Nighttime Anime Game night"},{"date":"9/12/2026","name":"Twilo - 1H"},{"date":"9/13/2026","name":"Zombie Rumble"},{"date":"9/13/2026","name":"Manifest Academy"},{"date":"9/13/2026","name":"Gregory Alan Isakov - 2H"},{"date":"9/14/2026","name":"Product Launch via Metavent"},{"date":"9/14/2026","name":"Gregory Alan Isakov - 2H"},{"date":"9/15/2026","name":"iCentivize CEO Dinner"},{"date":"9/16/2026","name":"AREA15 - New Hire Orientation"},{"date":"9/16/2026","name":"ENG"},{"date":"9/17/2026","name":"6th AREAversary Celebration - In-N-Out Food Truck"},{"date":"9/17/2026","name":"Karaoke"},{"date":"9/17/2026","name":"MILLI - 1H"},{"date":"9/18/2026","name":"Molchat Doma"},{"date":"9/18/2026","name":"Uncle Acid & The Deadbeats - North America '26"},{"date":"9/19/2026","name":"Anime convention/tradeshow"},{"date":"9/19/2026","name":"State Flower Festival"},{"date":"9/19/2026","name":"DJ Habibeats (4WALL)"},{"date":"9/19/2026","name":"Mike D - 1H"},{"date":"9/19/2026","name":"Twilo - 3H"},{"date":"9/20/2026","name":"Family Rave"},{"date":"9/20/2026","name":"Nancy Williams"},{"date":"9/20/2026","name":"Mike D - 1H"},{"date":"9/21/2026","name":"Mike D - 2H"},{"date":"9/22/2026","name":"LVHA September Event"},{"date":"9/22/2026","name":"Gregory Alan Isakov - 2H"},{"date":"9/22/2026","name":"Charlotte Sands"},{"date":"9/22/2026","name":"Mike D - 2H"},{"date":"9/23/2026","name":"DRVN After Dark"},{"date":"9/23/2026","name":"Skydio Offsite"},{"date":"9/23/2026","name":"Altair Grand Opening Media Party"},{"date":"9/23/2026","name":"Gregory Alan Isakov - 2H"},{"date":"9/23/2026","name":"Shawn James - 3H"},{"date":"9/23/2026","name":"Mike D - 2H"},{"date":"9/24/2026","name":"SanMar"},{"date":"9/24/2026","name":"Gregory Alan Isakov - 2H"},{"date":"9/24/2026","name":"Mike D - 2H"},{"date":"9/25/2026","name":"High Stakes Fest Day 1 - Unity Events (Co-Pro)"},{"date":"9/25/2026","name":"Rich Medina - 1H"},{"date":"9/26/2026","name":"Baby Shower"},{"date":"9/26/2026","name":"State Flower Festival"},{"date":"9/26/2026","name":"Foothill High School Alumni Committee"},{"date":"9/26/2026","name":"High Stakes Fest Day 2 - Unity Events (Co-Pro)"},{"date":"9/27/2026","name":"Aces Watch Party"},{"date":"9/27/2026","name":"Gregory Alan Isakov - 1H"},{"date":"9/27/2026","name":"Trauma Ray - 1H"},{"date":"9/28/2026","name":"Trauma Ray - 2H"},{"date":"9/29/2026","name":"Trip.com Mixer"},{"date":"9/29/2026","name":"Arm's Length & Holding Absence"},{"date":"9/29/2026","name":"ISI -Live Art Auction"},{"date":"9/29/2026","name":"Parcels - LOVED Tour 2026"},{"date":"9/29/2026","name":"The Number Twelve Looks Like You"},{"date":"9/30/2026","name":"AREA15 - New Hire Orientation"},{"date":"9/30/2026","name":"Exowatt"},{"date":"10/1/2026","name":"Karaoke"},{"date":"10/1/2026","name":"Bravo the Bagchaser w/ Peysoh - 2H"},{"date":"10/2/2026","name":"Scott Russo (Unwritten Law) - 1H"},{"date":"10/2/2026","name":"French Police"},{"date":"10/3/2026","name":"Dayshift"},{"date":"10/3/2026","name":"Scott Russo (Unwritten Law) - 1H"},{"date":"10/3/2026","name":"Herrick and O'Herron, Inc"},{"date":"10/3/2026","name":"Pride Experience 2026 - 2H"},{"date":"10/4/2026","name":"Wellness Event"},{"date":"10/6/2026","name":"TENT BUILD"},{"date":"10/6/2026","name":"Corporate Event for top performers"},{"date":"10/6/2026","name":"Lucki Events Reception"},{"date":"10/7/2026","name":"TENT BUILD"},{"date":"10/7/2026","name":"Harbor Foods Customer Appreciation"},{"date":"10/7/2026","name":"Gilbarco Veeder-Root Customer Event"},{"date":"10/7/2026","name":"Accenture"},{"date":"10/8/2026","name":"TENT BUILD"},{"date":"10/8/2026","name":"IRDC 2026 Tour & Panel"},{"date":"10/8/2026","name":"Pancakes and Booze Art Show"},{"date":"10/9/2026","name":"TENT BUILD"},{"date":"10/9/2026","name":"Rehearsal dinner"},{"date":"10/9/2026","name":"Preston Jovi Foundation"},{"date":"10/9/2026","name":"Juelz (4WALL) - 1H"},{"date":"10/10/2026","name":"TENT BUILD"},{"date":"10/10/2026","name":"RAINBOW FAMILY RAVE: LV PRIDE"},{"date":"10/10/2026","name":"10 Year High School Reunion"},{"date":"10/10/2026","name":"40th High School Reunion"},{"date":"10/10/2026","name":"Pride Experience 2026 - 2H"},{"date":"10/10/2026","name":"RAINBOW RAVE: LV PRIDE"},{"date":"10/10/2026","name":"PRIDE HOVP  + BALLROOM EVENT"},{"date":"10/11/2026","name":"TENT BUILD"},{"date":"10/11/2026","name":"Manifest Academy"},{"date":"10/11/2026","name":"John Beagle - Wife's 50th birthday"},{"date":"10/12/2026","name":"TENT BUILD"},{"date":"10/12/2026","name":"Millennium Hotels"},{"date":"10/13/2026","name":"TENT BUILD"},{"date":"10/13/2026","name":"AREA15 - New Hire Orientation"},{"date":"10/13/2026","name":"2026 NARPM Annual Convention Center & Trade Show Reception"},{"date":"10/13/2026","name":"Buildium Marketplace Reception"},{"date":"10/13/2026","name":"Gnash"},{"date":"10/14/2026","name":"TENT BUILD"},{"date":"10/14/2026","name":"Vizypay LOAD IN HOLD"},{"date":"10/14/2026","name":"Pride Bingo"},{"date":"10/14/2026","name":"HF Sinclair"},{"date":"10/14/2026","name":"Second Nature Reception"},{"date":"10/14/2026","name":"Nekrogoblikon w/ Rivers of Nihil"},{"date":"10/15/2026","name":"TENT BUILD"},{"date":"10/15/2026","name":"VizyPay Meeting"},{"date":"10/15/2026","name":"Karaoke"},{"date":"10/16/2026","name":"TENT BUILD"},{"date":"10/16/2026","name":"Nervous Records"},{"date":"10/17/2026","name":"TENT BUILD"},{"date":"10/17/2026","name":"My Brother\u00e2\u0080\u0099s Keeper youth conference"},{"date":"10/17/2026","name":"Bingo Loco - Name That Song"},{"date":"10/17/2026","name":"Anime Night Mart + Rave"},{"date":"10/17/2026","name":"Wedding Reception"},{"date":"10/18/2026","name":"TENT BUILD"},{"date":"10/18/2026","name":"Family Rave"},{"date":"10/18/2026","name":"National Interstate Insurance"},{"date":"10/18/2026","name":"Uplift Foundation"},{"date":"10/19/2026","name":"TENT BUILD"},{"date":"10/19/2026","name":"Rocky Horror Rehearsal"},{"date":"10/19/2026","name":"BLM GROUP USA"},{"date":"10/20/2026","name":"TENT BUILD"},{"date":"10/20/2026","name":"Rocky Horror Rehearsal"},{"date":"10/21/2026","name":"Rocky Horror Rehearsal"},{"date":"10/21/2026","name":"Comply365"},{"date":"10/21/2026","name":"ESAB 2H"},{"date":"10/21/2026","name":"AZ Chike - 2H"},{"date":"10/22/2026","name":"Hyper Networks 2026"},{"date":"10/22/2026","name":"Wealth Mastery"},{"date":"10/22/2026","name":"The Click Five - 2H"},{"date":"10/23/2026","name":"DR Horton"},{"date":"10/23/2026","name":"Wycoff Wedding Reception"},{"date":"10/23/2026","name":"Wedding Reception"},{"date":"10/23/2026","name":"The Click Five - 1H"},{"date":"10/23/2026","name":"AZ Chike - 2H"},{"date":"10/23/2026","name":"It's A 2000s Party"},{"date":"10/24/2026","name":"Wedding Reception"},{"date":"10/24/2026","name":"Micro Wedding"},{"date":"10/24/2026","name":"ISI -Live Art Auction"},{"date":"10/24/2026","name":"AZ Chike - 1H"},{"date":"10/24/2026","name":"Juelz / RVLTN (4WALL)"},{"date":"10/25/2026","name":"The Click Five - 1H"},{"date":"10/25/2026","name":"AZ Chike - 2H"},{"date":"10/25/2026","name":"ROCKY HORROR"},{"date":"10/26/2026","name":"The Vega Group"},{"date":"10/26/2026","name":"AZ Chike - 2H"},{"date":"10/26/2026","name":"Bleood - 2H"},{"date":"10/27/2026","name":"Boggs Wedding Reception"},{"date":"10/27/2026","name":"AZ Chike - 2H"},{"date":"10/28/2026","name":"DRVN After Dark"},{"date":"10/28/2026","name":"AZ Chike - 2H"},{"date":"10/28/2026","name":"Paul Cauthen - 2H"},{"date":"10/28/2026","name":"Bleood - 3H"},{"date":"10/29/2026","name":"Strange Circus Load-In"},{"date":"10/29/2026","name":"Coal Chamber / POD - 2H"},{"date":"10/29/2026","name":"AZ Chike - 2H"},{"date":"10/29/2026","name":"Paul Cauthen - 2H"},{"date":"10/29/2026","name":"Bleood - 3H"},{"date":"10/30/2026","name":"Karaoke"},{"date":"10/30/2026","name":"Coal Chamber / Cradle of Filth - 3H"},{"date":"10/30/2026","name":"Strange Circus Night 1 - A-LOT Only"},{"date":"10/30/2026","name":"Bleood - 1H"},{"date":"10/30/2026","name":"RVLTN (4WALL) - 2H"},{"date":"10/30/2026","name":"ROCKY HORROR"},{"date":"10/31/2026","name":"Shanerria Leach Event"},{"date":"10/31/2026","name":"1 Year Anniversary Celebration"},{"date":"10/31/2026","name":"scAREA15 STRANGE CIRCUS"},{"date":"10/31/2026","name":"Strange Circus AREA-Festivals (w/ Valentino Khan)"},{"date":"10/31/2026","name":"ROCKY HORROR"},{"date":"11/1/2026","name":"Alps Alpine North America INC \"Alpine\""},{"date":"11/1/2026","name":"Bleood - 1H"},{"date":"11/2/2026","name":"Motor Film Awards"},{"date":"11/2/2026","name":"Dope Lemon - 2H"},{"date":"11/2/2026","name":"Bleood - 3H"},{"date":"11/3/2026","name":"Dope Lemon - 2H"},{"date":"11/3/2026","name":"Bleood - 3H"},{"date":"11/4/2026","name":"Wedding Reception"},{"date":"11/4/2026","name":"Dope Lemon - 2H"},{"date":"11/4/2026","name":"CFLM 2026 Boehringer x Cohera"},{"date":"11/4/2026","name":"SATA USA, Inc., SEMA Customer Appreciation Night"},{"date":"11/5/2026","name":"Stephon's Wedding"},{"date":"11/5/2026","name":"Geosheild SEMA Event Week Afterparty"},{"date":"11/5/2026","name":"Sitting on Saturn - 2H"},{"date":"11/5/2026","name":"Clara La San - 3H"},{"date":"11/5/2026","name":"Bleood - 2H"},{"date":"11/5/2026","name":"Insomniac x RVLTN (4WALL) - 2H"},{"date":"11/6/2026","name":"The Commons LLC"},{"date":"11/6/2026","name":"Wedding Celebration"},{"date":"11/6/2026","name":"Sitting on Saturn - 1H"},{"date":"11/6/2026","name":"Clara La San - 2H"},{"date":"11/6/2026","name":"Bleood - 1H"},{"date":"11/6/2026","name":"Insomniac x RVLTN (4WALL) - 1H"},{"date":"11/7/2026","name":"Pamela Holmes-60th Birthday"},{"date":"11/7/2026","name":"Sitting on Saturn - 1H"},{"date":"11/7/2026","name":"Clara La San - 2H"},{"date":"11/7/2026","name":"Insomniac x RVLTN (4WALL) - 1H"},{"date":"11/7/2026","name":"Paul Oakenfold / Crystal Method"},{"date":"11/8/2026","name":"Manifest Academy"},{"date":"11/8/2026","name":"Sitting on Saturn - 1H"},{"date":"11/8/2026","name":"Clara La San - 2H"},{"date":"11/8/2026","name":"Bleood - 1H"},{"date":"11/8/2026","name":"Insomniac x RVLTN (4WALL) - 1H"},{"date":"11/9/2026","name":"Regions Bank 2026 Client Reception via Imprint"},{"date":"11/9/2026","name":"Sitting on Saturn - 2H"},{"date":"11/9/2026","name":"Clara La San - 2H"},{"date":"11/9/2026","name":"Bleood - 2H"},{"date":"11/10/2026","name":"PNC Client Reception"},{"date":"11/10/2026","name":"Sitting on Saturn - 2H"},{"date":"11/10/2026","name":"Clara La San - 2H"},{"date":"11/10/2026","name":"Bleood - 2H"},{"date":"11/11/2026","name":"US Anesthesia Partners"},{"date":"11/11/2026","name":"Table Top Meeting"},{"date":"11/11/2026","name":"Pride Bingo"},{"date":"11/11/2026","name":"State Champs - A-Lot - 1H"},{"date":"11/11/2026","name":"CFP-Tech Rehearsal"},{"date":"11/11/2026","name":"Agiloft via Destination Fabulous"},{"date":"11/12/2026","name":"CFP-Production Meeting"},{"date":"11/12/2026","name":"Latin Grammy's Brunch via Elite Status Group"},{"date":"11/12/2026","name":"Karaoke"},{"date":"11/12/2026","name":"State Champs - A-Lot - 2H"},{"date":"11/12/2026","name":"American Football - 2H"},{"date":"11/12/2026","name":"Bleood - 3H"},{"date":"11/13/2026","name":"Pop Evil"},{"date":"11/13/2026","name":"State Champs - A-Lot - 1H"},{"date":"11/14/2026","name":"Kiwanis Club of Las Vegas Young Professionals"},{"date":"11/14/2026","name":"Nanakul Wedding reception"},{"date":"11/14/2026","name":"Inzo"},{"date":"11/15/2026","name":"Pokemon Trading Card Event"},{"date":"11/15/2026","name":"Marc Kenwood - Private Event"},{"date":"11/15/2026","name":"State Champs - A-Lot - 1H"},{"date":"11/15/2026","name":"Ninajirachi - 1H"},{"date":"11/16/2026","name":"T1 Energy After Party"},{"date":"11/16/2026","name":"TrueBlue"},{"date":"11/16/2026","name":"Neo Partner via PRA"},{"date":"11/17/2026","name":"Siemens Customer Reception"},{"date":"11/19/2026","name":"AREA15 - New Hire Orientation"},{"date":"11/19/2026","name":"Karaoke"},{"date":"11/19/2026","name":"ISI Entertainment Documentary Premier"},{"date":"11/19/2026","name":"Clara La San - 2H"},{"date":"11/19/2026","name":"Carl Cox - A-Lot - 2H"},{"date":"11/20/2026","name":"Suncore Christmas Party"},{"date":"11/20/2026","name":"Zero 9:36 / Aurorawave - 1H"},{"date":"11/21/2026","name":"Bingo Loco - Name That Song"},{"date":"11/21/2026","name":"Hot Import Nights Rave - 2H"},{"date":"11/22/2026","name":"Family Rave"},{"date":"11/22/2026","name":"Clara La San - 1H"},{"date":"11/23/2026","name":"Clara La San - 2H"},{"date":"11/24/2026","name":"Clara La San - 2H"},{"date":"11/25/2026","name":"DRVN After Dark"},{"date":"11/25/2026","name":"Family Reunion Meet & Greet"},{"date":"11/25/2026","name":"Clara La San - 3H"},{"date":"11/25/2026","name":"Close Friends Only - 2H"},{"date":"11/28/2026","name":"ISI -Live Art Auction"},{"date":"11/28/2026","name":"Close Friends Only - 1H"},{"date":"11/29/2026","name":"Amazonian VIP Experience"},{"date":"11/29/2026","name":"Welcome Reception of AWS reInvent"},{"date":"11/29/2026","name":"AWS Grant Program Opening Reception via Opus"},{"date":"11/30/2026","name":"Perficient"},{"date":"12/1/2026","name":"Cribl"},{"date":"12/1/2026","name":"Neo4j Event"},{"date":"12/1/2026","name":"ClickHouse Reception and Concert"},{"date":"12/2/2026","name":"AWS Reception via Opus"},{"date":"12/3/2026","name":"Karaoke"},{"date":"12/3/2026","name":"Holiday party"},{"date":"12/3/2026","name":"IRSCDEI"},{"date":"12/4/2026","name":"Renewal by Andersen Holiday Party"},{"date":"12/4/2026","name":"Ballard Spahr LLP"},{"date":"12/5/2026","name":"Dayshift"},{"date":"12/5/2026","name":"Fidelity National Financial-Holiday Party"},{"date":"12/5/2026","name":"Reception"},{"date":"12/5/2026","name":"Richard Harris Company Holiday Party"},{"date":"12/6/2026","name":"Surprise Birthday Party"},{"date":"12/9/2026","name":"Pride Bingo"},{"date":"12/9/2026","name":"45th Hunter Industries Anniversary"},{"date":"12/9/2026","name":"Contura Vet"},{"date":"12/10/2026","name":"St. Clair Productions"},{"date":"12/10/2026","name":"Down - A-Lot - 2H"},{"date":"12/10/2026","name":"Exodus - Portal - 2H"},{"date":"12/11/2026","name":"17 Year Old Birthday Party"},{"date":"12/11/2026","name":"McKenna Property Management"},{"date":"12/11/2026","name":"Accuracy Winter Party"},{"date":"12/11/2026","name":"Bighorn Law Holiday Party"},{"date":"12/11/2026","name":"Catapult Global"},{"date":"12/11/2026","name":"Down - A-Lot - 1H"},{"date":"12/11/2026","name":"Exodus - Portal - 3H"},{"date":"12/11/2026","name":"Corporate Holiday Party"},{"date":"12/12/2026","name":"Down - A-Lot - 1H"},{"date":"12/12/2026","name":"Exodus - Portal - 2H"},{"date":"12/12/2026","name":"Clark Hill"},{"date":"12/12/2026","name":"Winsupply Las Vegas-Christmas Party"},{"date":"12/12/2026","name":"Vibrant Wellness"},{"date":"12/13/2026","name":"Manifest Academy"},{"date":"12/13/2026","name":"Team Vance Management-Holiday Party"},{"date":"12/13/2026","name":"Down - A-Lot - 1H"},{"date":"12/13/2026","name":"Exodus - Portal - 2H"},{"date":"12/14/2026","name":"Down - A-Lot - 1H"},{"date":"12/15/2026","name":"Down - A-Lot - 1H"},{"date":"12/15/2026","name":"Carnival - Choreographer's Showcase"},{"date":"12/16/2026","name":"AREA15 - New Hire Orientation"},{"date":"12/16/2026","name":"Down - A-Lot - 1H"},{"date":"12/17/2026","name":"Karaoke"},{"date":"12/18/2026","name":"Military Booster Club Holiday Party"},{"date":"12/18/2026","name":"RVLTN (4WALL) - 2H"},{"date":"12/19/2026","name":"Bingo Loco - Name That Song"},{"date":"12/19/2026","name":"Birthday"}];
+
+    function eventOptionsForThisWeek(monday) {
+        // Window = last week start through next week end (21 days), same as Temp's dropdown
+        var windowStart = new Date(monday); windowStart.setDate(monday.getDate() - 7);
+        var windowEnd = new Date(monday); windowEnd.setDate(monday.getDate() + 13);
+        var names = [];
+        var seen = {};
+        EVENTS_SNAPSHOT.forEach(function(ev) {
+            var parts = ev.date.split('/');
+            var d = new Date(parseInt(parts[2]), parseInt(parts[0]) - 1, parseInt(parts[1]));
+            if (d >= windowStart && d <= windowEnd && !seen[ev.name]) {
+                seen[ev.name] = true;
+                names.push(ev.name);
+            }
+        });
+        names.sort();
+        return names;
+    }
+
+    function deptCodeOptions(selected) {
+        var html = '<option value="">-- Select --</option>';
+        DEPT_CODES.forEach(function(c) {
+            html += '<option' + (c === selected ? ' selected' : '') + '>' + c + '</option>';
+        });
+        return html;
+    }
+    function areaOptions(selected) {
+        var html = '<option value="">-- Select --</option>';
+        AREAS.forEach(function(a) {
+            html += '<option' + (a === selected ? ' selected' : '') + '>' + a + '</option>';
+        });
+        return html;
+    }
+    function eventOptions(selected) {
+        var html = '<option value="">-- Select --</option>';
+        EVENT_NAMES_THIS_WINDOW.forEach(function(n) {
+            html += '<option' + (n === selected ? ' selected' : '') + '>' + n + '</option>';
+        });
+        var isOther = selected && EVENT_NAMES_THIS_WINDOW.indexOf(selected) === -1;
+        html += '<option value="__other__"' + (isOther ? ' selected' : '') + '>Other / not listed (type below)</option>';
+        return html;
+    }
+
+    // Auto-generate current week Mon-Sun. "days" holds display labels (with weekday name) used
+    // for headings/element IDs; "dayDates" holds the matching clean M/D/YYYY value used in the
+    // CSV export, since Temp needs a plain date, not "Monday 6/8/2026".
+    function getWeekDays() {
+        var today = new Date();
+        var dow = today.getDay(); // 0=Sun
+        var monday = new Date(today);
+        monday.setDate(today.getDate() - ((dow + 6) % 7));
+        var names = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
+        var labels = [];
+        var dates = [];
+        for (var i = 0; i < 7; i++) {
+            var d = new Date(monday);
+            d.setDate(monday.getDate() + i);
+            var dateStr = (d.getMonth()+1) + '/' + d.getDate() + '/' + d.getFullYear();
+            labels.push(names[i] + ' ' + dateStr);
+            dates.push(dateStr);
+        }
+        return { labels: labels, dates: dates, monday: monday };
+    }
+
+    var weekInfo = getWeekDays();
+    var days = weekInfo.labels;
+    var dayDates = {};
+    days.forEach(function(day, i) { dayDates[day] = weekInfo.dates[i]; });
+    var EVENT_NAMES_THIS_WINDOW = eventOptionsForThisWeek(weekInfo.monday);
+
+    function createDaySection(day) {
+        var div = document.createElement('div');
+        div.className = 'day';
+        div.id = 'day-' + day;
+        div.innerHTML =
+            '<h2>' + day + '</h2>' +
+            '<div class="day-off-banner" id="' + day + '-off-banner" style="display:none;">&#127796; DAY OFF - No hours recorded</div>' +
+            '<table>' +
+                '<thead><tr>' +
+                    '<th>Project/Event</th><th>Activity</th><th>Area</th>' +
+                    '<th>Total Hours</th><th>Additional Comments</th>' +
+                '</tr></thead>' +
+                '<tbody id="' + day + '-rows"></tbody>' +
+            '</table>' +
+            '<div class="day-controls">' +
+                '<button id="' + day + '-add-btn" onclick="addRow(\'' + day + '\')">+ Add Row</button>' +
+                '<button id="' + day + '-delete-btn" class="delete-btn" onclick="deleteLastRow(\'' + day + '\')" style="display:none">Delete Last Row</button>' +
+                '<button class="day-off-btn" id="' + day + '-off-btn" onclick="toggleDayOff(\'' + day + '\', this)">Mark as Day Off</button>' +
+            '</div>' +
+            '<p><strong>Daily Notes / Safety:</strong> <textarea id="' + day + '-notes" rows="3" style="width:100%"></textarea></p>' +
+            '<p>' +
+                '<strong>Break 1 (hrs):</strong> ' +
+                '<input type="number" id="' + day + '-break1" min="0" step="0.25" placeholder="0.00" style="width:80px;display:inline"> &nbsp;&nbsp;' +
+                '<strong>Break 2 (hrs):</strong> ' +
+                '<input type="number" id="' + day + '-break2" min="0" step="0.25" placeholder="0.00" style="width:80px;display:inline">' +
+            '</p>' +
+            '<p><strong>Total Daily Hours:</strong> <span id="' + day + '-daily-total">0.00</span></p>';
+        document.getElementById('days').appendChild(div);
+        addRow(day);
+    }
+
+    function toggleDayOff(day, btn) {
+        var banner = document.getElementById(day + '-off-banner');
+        var tbody  = document.getElementById(day + '-rows');
+        var notes  = document.getElementById(day + '-notes');
+        var totalEl = document.getElementById(day + '-daily-total');
+        var addBtn  = document.getElementById(day + '-add-btn');
+        var delBtn  = document.getElementById(day + '-delete-btn');
+        var isOff  = banner.style.display !== 'none';
+
+        if (isOff) {
+            banner.style.display = 'none';
+            btn.textContent = 'Mark as Day Off';
+            btn.style.backgroundColor = '#008800';
+            if (addBtn) addBtn.style.display = 'inline-block';
+            addRow(day);
+        } else {
+            banner.style.display = 'block';
+            btn.textContent = 'Remove Day Off';
+            btn.style.backgroundColor = '#cc8800';
+            tbody.innerHTML = '';
+            if (notes) notes.value = '';
+            if (totalEl) totalEl.textContent = '0.00';
+            if (addBtn) addBtn.style.display = 'none';
+            if (delBtn) delBtn.style.display = 'none';
+            var b1 = document.getElementById(day + '-break1');
+            var b2 = document.getElementById(day + '-break2');
+            if (b1) b1.value = '';
+            if (b2) b2.value = '';
+        }
+        updateWeeklyTotal();
+    }
+
+    function toggleOtherEvent(selectEl) {
+        var otherInput = selectEl.parentElement.querySelector('.eventname-other');
+        if (!otherInput) return;
+        otherInput.style.display = (selectEl.value === '__other__') ? 'block' : 'none';
+        if (selectEl.value === '__other__') otherInput.focus();
+    }
+    function getEventValue(tr) {
+        var sel = tr.querySelector('.eventname');
+        var other = tr.querySelector('.eventname-other');
+        if (sel && sel.value === '__other__') return other ? other.value : '';
+        return sel ? sel.value : '';
+    }
+    function toggleOtherActivity(selectEl) {
+        var otherInput = selectEl.parentElement.querySelector('.activity-other');
+        if (!otherInput) return;
+        otherInput.style.display = (selectEl.value === '__other__') ? 'block' : 'none';
+        if (selectEl.value === '__other__') otherInput.focus();
+    }
+    function getActivityValue(tr) {
+        var sel = tr.querySelector('.activity');
+        var other = tr.querySelector('.activity-other');
+        if (sel && sel.value === '__other__') return other ? other.value : '';
+        return sel ? sel.value : '';
+    }
+
+    function addRow(day) {
+        var tbody = document.getElementById(day + '-rows');
+        var row = document.createElement('tr');
+        row.innerHTML =
+            '<td><select class="eventname" onchange="toggleOtherEvent(this)">' + eventOptions() + '</select>' +
+                '<input type="text" class="eventname-other" placeholder="Type event/project name" style="display:none;margin-top:4px"></td>' +
+            '<td><select class="activity" onchange="toggleOtherActivity(this)">' + activityOptions() + '</select>' +
+                '<input type="text" class="activity-other" placeholder="Type activity" style="display:none;margin-top:4px"></td>' +
+            '<td><select class="area">' + areaOptions() + '</select></td>' +
+            '<td><input type="number" class="row-total" min="0" step="0.25" placeholder="0.00" oninput="updateDailyFromRow(this)"></td>' +
+            '<td><textarea rows="2" class="comments" placeholder="Notes / safety comments..."></textarea></td>';
+        tbody.appendChild(row);
+        updateDeleteButton(day);
+        updateWeeklyTotal();
+    }
+
+    function updateDeleteButton(day) {
+        var tbody = document.getElementById(day + '-rows');
+        var delBtn = document.getElementById(day + '-delete-btn');
+        if (delBtn) {
+            delBtn.style.display = (tbody.rows.length > 1) ? 'inline-block' : 'none';
+        }
+    }
+
+    function deleteLastRow(day) {
+        var tbody = document.getElementById(day + '-rows');
+        if (tbody.rows.length <= 1) return;
+        if (confirm('Delete the last row?')) {
+            tbody.deleteRow(-1);
+            var dayDiv = document.getElementById('day-' + day);
+            updateDailyTotal(dayDiv);
+            updateWeeklyTotal();
+            updateDeleteButton(day);
+        }
+    }
+
+    function updateDailyFromRow(input) {
+        var dayDiv = input.closest('.day');
+        updateDailyTotal(dayDiv);
+        updateWeeklyTotal();
+    }
+
+    function updateDailyTotal(dayDiv) {
+        var total = 0;
+        dayDiv.querySelectorAll('.row-total').forEach(function(inp) {
+            total += parseFloat(inp.value) || 0;
+        });
+        var el = dayDiv.querySelector('[id$="-daily-total"]');
+        if (el) el.textContent = total.toFixed(2);
+    }
+
+    function updateWeeklyTotal() {
+        var weekly = 0;
+        document.querySelectorAll('.day').forEach(function(dayDiv) {
+            var el = dayDiv.querySelector('[id$="-daily-total"]');
+            if (el) weekly += parseFloat(el.textContent) || 0;
+        });
+        document.getElementById('weekly-total').textContent = weekly.toFixed(2);
+    }
+
+    function isDayOff(day) {
+        var banner = document.getElementById(day + '-off-banner');
+        return banner && banner.style.display !== 'none';
+    }
+
+    // ── SAVE ──────────────────────────────────────────────────────────────────
+    function saveData() {
+        var data = { employee: document.getElementById('employee').value, days: {} };
+        days.forEach(function(day) {
+            var isOff = isDayOff(day);
+            var notes = document.getElementById(day + '-notes') ? document.getElementById(day + '-notes').value : '';
+            var rows = [];
+            if (!isOff) {
+                document.getElementById(day + '-rows').querySelectorAll('tr').forEach(function(tr) {
+                    rows.push({
+                        eventname: getEventValue(tr),
+                        activity:  getActivityValue(tr),
+                        area:      tr.querySelector('.area') ? tr.querySelector('.area').value : '',
+                        hours:     tr.querySelector('.row-total') ? tr.querySelector('.row-total').value : '',
+                        comments:  tr.querySelector('.comments') ? tr.querySelector('.comments').value : ''
+                    });
+                });
+            }
+            var b1El = document.getElementById(day + '-break1');
+            var b2El = document.getElementById(day + '-break2');
+            data.days[day] = { isOff: isOff, notes: notes, rows: rows, break1: b1El ? b1El.value : '', break2: b2El ? b2El.value : '' };
+        });
+        localStorage.setItem('area15_signin_v3', JSON.stringify(data));
+        alert('✅ Progress saved!');
+    }
+
+    // ── LOAD ──────────────────────────────────────────────────────────────────
+    function loadData() {
+        var saved = localStorage.getItem('area15_signin_v3');
+        if (!saved) { alert('No saved data found.'); return; }
+        var data = JSON.parse(saved);
+        document.getElementById('employee').value = data.employee || '';
+
+        days.forEach(function(day) {
+            var dayData = data.days[day];
+            if (!dayData) return;
+
+            var tbody   = document.getElementById(day + '-rows');
+            var addBtn  = document.getElementById(day + '-add-btn');
+            var delBtn  = document.getElementById(day + '-delete-btn');
+            var offBtn  = document.getElementById(day + '-off-btn');
+            var banner  = document.getElementById(day + '-off-banner');
+            var notesEl = document.getElementById(day + '-notes');
+
+            tbody.innerHTML = '';
+
+            if (dayData.isOff) {
+                banner.style.display = 'block';
+                if (addBtn) addBtn.style.display = 'none';
+                if (delBtn) delBtn.style.display = 'none';
+                if (offBtn) { offBtn.textContent = 'Remove Day Off'; offBtn.style.backgroundColor = '#cc8800'; }
+            } else {
+                banner.style.display = 'none';
+                if (addBtn) addBtn.style.display = 'inline-block';
+                if (offBtn) { offBtn.textContent = 'Mark as Day Off'; offBtn.style.backgroundColor = '#008800'; }
+
+                (dayData.rows || []).forEach(function(r) {
+                    var tr = document.createElement('tr');
+                    var isOtherEvent = r.eventname && EVENT_NAMES_THIS_WINDOW.indexOf(r.eventname) === -1;
+                    var isOtherActivity = r.activity && ACTIVITIES.indexOf(r.activity) === -1;
+                    tr.innerHTML =
+                        '<td><select class="eventname" onchange="toggleOtherEvent(this)">' + eventOptions(r.eventname) + '</select>' +
+                            '<input type="text" class="eventname-other" value="' + esc(isOtherEvent ? r.eventname : '') +
+                            '" placeholder="Type event/project name" style="display:' + (isOtherEvent ? 'block' : 'none') + ';margin-top:4px"></td>' +
+                        '<td><select class="activity" onchange="toggleOtherActivity(this)">' + activityOptions(r.activity) + '</select>' +
+                            '<input type="text" class="activity-other" value="' + esc(isOtherActivity ? r.activity : '') +
+                            '" placeholder="Type activity" style="display:' + (isOtherActivity ? 'block' : 'none') + ';margin-top:4px"></td>' +
+                        '<td><select class="area">' + areaOptions(r.area) + '</select></td>' +
+                        '<td><input type="number" class="row-total" min="0" step="0.25" value="' + (r.hours||'') + '" placeholder="0.00" oninput="updateDailyFromRow(this)"></td>' +
+                        '<td><textarea rows="2" class="comments">' + esc(r.comments) + '</textarea></td>';
+                    tbody.appendChild(tr);
+                });
+                if (!dayData.rows || dayData.rows.length === 0) addRow(day);
+            }
+            if (notesEl) notesEl.value = dayData.notes || '';
+            var b1El = document.getElementById(day + '-break1');
+            var b2El = document.getElementById(day + '-break2');
+            if (b1El) b1El.value = dayData.break1 || '';
+            if (b2El) b2El.value = dayData.break2 || '';
+
+            var dayDiv = document.getElementById('day-' + day);
+            updateDailyTotal(dayDiv);
+            updateDeleteButton(day);
+        });
+
+        updateWeeklyTotal();
+        alert('✅ Data loaded!');
+    }
+
+    function esc(s) {
+        return (s || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    // ── COLLECT DAY ROWS (with Setup/Event/Strike merge) ──────────────────────
+    // When an employee enters "Setup", "Event", and/or "Strike" as separate rows
+    // for the same Project/Event + Area on the same day, this collapses them into
+    // one row with activity "Setup, event, strike" and the hours summed, so the
+    // export and email look clean. Any other rows pass through unchanged.
+    var MERGE_PARTS = {"setup": true, "event": true, "strike": true};
+    function collectDayRows(day) {
+        var rows = [];
+        document.getElementById(day + '-rows').querySelectorAll('tr').forEach(function(tr) {
+            var eventname = getEventValue(tr);
+            var area      = tr.querySelector('.area') ? tr.querySelector('.area').value : '';
+            var hours     = parseFloat(tr.querySelector('.row-total') ? tr.querySelector('.row-total').value : '') || 0;
+            var activity  = getActivityValue(tr) || '';
+            var comments  = tr.querySelector('.comments') ? tr.querySelector('.comments').value : '';
+            if (!hours) return; // skip blank rows
+            rows.push({ eventname: eventname, area: area, hours: hours,
+                        activity: activity, comments: comments });
+        });
+
+        // Group by eventname+area
+        var groups = {};
+        var order  = [];
+        rows.forEach(function(r) {
+            var key = r.eventname + '|||' + r.area;
+            if (!groups[key]) { groups[key] = []; order.push(key); }
+            groups[key].push(r);
+        });
+
+        var merged = [];
+        order.forEach(function(key) {
+            var grp = groups[key];
+            // Split this group into merge-eligible rows and everything else
+            var ses = grp.filter(function(r) { return MERGE_PARTS[r.activity.toLowerCase().trim()]; });
+            var other = grp.filter(function(r) { return !MERGE_PARTS[r.activity.toLowerCase().trim()]; });
+
+            if (ses.length > 1) {
+                // Combine them into one "Setup, event, strike" row
+                var totalHrs = ses.reduce(function(sum, r) { return sum + r.hours; }, 0);
+                var combinedComments = ses.map(function(r) { return r.comments; })
+                                         .filter(Boolean).join(' | ');
+                merged.push({ eventname: ses[0].eventname, area: ses[0].area,
+                              hours: totalHrs, activity: 'Setup, event, strike',
+                              comments: combinedComments });
+            } else {
+                ses.forEach(function(r) { merged.push(r); });
+            }
+            other.forEach(function(r) { merged.push(r); });
+        });
+        return merged;
+    }
+
+    // ── EXPORT CSV ────────────────────────────────────────────────────────────
+    function exportCSV() {
+        var employee = document.getElementById('employee').value || 'Unnamed';
+        var csv = 'Name,Date,Hours,Department Code,Event/Project,Details,Area\n';
+
+        days.forEach(function(day) {
+            if (isDayOff(day)) return;
+            var dateStr = dayDates[day];
+            var rows = collectDayRows(day);
+            rows.forEach(function(r) {
+                var act = r.activity.replace(/,/g,';').replace(/\n/g,' ');
+                csv += '"' + employee + '",' +
+                    '"' + dateStr + '",' +
+                    '"' + r.hours.toFixed(2) + '",' +
+                    '"",' +
+                    '"' + r.eventname + '",' +
+                    '"' + act + '",' +
+                    '"' + r.area + '"\n';
+            });
+        });
+
+        var blob = new Blob([csv], { type: 'text/csv' });
+        var url  = URL.createObjectURL(blob);
+        var link = document.createElement('a');
+        link.href = url;
+        link.download = 'Temp_Import_' + employee.replace(/ /g,'_') + '_' + dayDates[days[0]].replace(/\//g,'-') + '.csv';
+        link.click();
+        URL.revokeObjectURL(url);
+        alert('✅ Your timesheet copy has been saved to your downloads folder — keep it for your records.');
+    }
+
+    // ── VALIDATE & SEND ───────────────────────────────────────────────────────
+    function validateAndSend() {
+        var isValid = true;
+        document.querySelectorAll('.error').forEach(function(el) { el.classList.remove('error'); });
+
+        if (!document.getElementById('employee').value) {
+            document.getElementById('employee').classList.add('error');
+            isValid = false;
+        }
+
+        days.forEach(function(day) {
+            if (isDayOff(day)) return;
+            document.getElementById(day + '-rows').querySelectorAll('tr').forEach(function(tr) {
+                var en = tr.querySelector('.eventname');
+                var enOther = tr.querySelector('.eventname-other');
+                var ac = tr.querySelector('.activity');
+                var acOther = tr.querySelector('.activity-other');
+                var ar = tr.querySelector('.area');
+                var h  = tr.querySelector('.row-total');
+                if (!en.value) {
+                    en.classList.add('error'); isValid = false;
+                } else if (en.value === '__other__' && !enOther.value.trim()) {
+                    enOther.classList.add('error'); isValid = false;
+                }
+                if (!ac.value) {
+                    ac.classList.add('error'); isValid = false;
+                } else if (ac.value === '__other__' && !acOther.value.trim()) {
+                    acOther.classList.add('error'); isValid = false;
+                }
+                if (!ar.value) { ar.classList.add('error'); isValid = false; }
+                if (!h.value || parseFloat(h.value) <= 0) { h.classList.add('error'); isValid = false; }
+            });
+        });
+
+        if (!isValid) {
+            alert('❌ Some required fields are missing (highlighted in red).');
+            return;
+        }
+        submitToEmail();
+    }
+
+    function submitToEmail() {
+        var employee  = document.getElementById('employee').value || 'Unnamed Employee';
+        var weekStart = days[0];
+        var weekEnd   = days[6];
+
+        var htmlBody =
+            '<h2 style="font-family:Arial,sans-serif;color:#333">AREA15 Production Department Sign-In Sheet</h2>' +
+            '<p style="font-family:Arial,sans-serif;font-size:14px">' +
+                '<strong>Employee:</strong> ' + employee + '<br>' +
+                '<strong>Week of:</strong> ' + weekStart + ' &ndash; ' + weekEnd +
+            '</p><hr>';
+
+        days.forEach(function(day) {
+            var isOff = isDayOff(day);
+            htmlBody += '<h3 style="font-family:Arial,sans-serif;color:#0066cc;margin:16px 0 6px">' + day + '</h3>';
+
+            if (isOff) {
+                htmlBody += '<p style="font-family:Arial,sans-serif;font-size:13px"><em>🌴 Day off — no hours recorded.</em></p>';
+                return;
+            }
+
+            var dtotEl = document.getElementById(day + '-daily-total');
+            var dtot   = dtotEl ? dtotEl.textContent : '0.00';
+            htmlBody += '<p style="font-family:Arial,sans-serif;font-size:13px"><strong>Daily Total Hours: ' + dtot + '</strong></p>';
+            htmlBody +=
+                '<table border="1" cellpadding="7" cellspacing="0" style="border-collapse:collapse;width:100%;font-family:Arial,sans-serif;font-size:12px">' +
+                '<tr style="background:#f0f0f0">' +
+                    '<th>Project/Event</th><th>Activity</th><th>Area</th><th>Hours</th><th>Additional Comments</th>' +
+                '</tr>';
+
+            collectDayRows(day).forEach(function(r) {
+                htmlBody +=
+                    '<tr>' +
+                        '<td>' + (r.eventname || '—') + '</td>' +
+                        '<td>' + (r.activity  || '—') + '</td>' +
+                        '<td>' + (r.area      || '—') + '</td>' +
+                        '<td><strong>' + r.hours.toFixed(2) + '</strong></td>' +
+                        '<td>' + (r.comments  || '—') + '</td>' +
+                    '</tr>';
+            });
+            htmlBody += '</table>';
+
+            var b1El = document.getElementById(day + '-break1');
+            var b2El = document.getElementById(day + '-break2');
+            var b1val = b1El && b1El.value ? b1El.value + ' hr(s)' : '—';
+            var b2val = b2El && b2El.value ? b2El.value + ' hr(s)' : '—';
+            htmlBody += '<p style="font-family:Arial,sans-serif;font-size:12px;margin-top:6px"><strong>Break 1:</strong> ' + b1val + ' &nbsp;|&nbsp; <strong>Break 2:</strong> ' + b2val + '</p>';
+
+            var notesEl = document.getElementById(day + '-notes');
+            if (notesEl && notesEl.value.trim()) {
+                htmlBody += '<p style="font-family:Arial,sans-serif;font-size:12px;margin-top:6px"><strong>Notes:</strong> ' + notesEl.value + '</p>';
+            }
+            htmlBody += '<br>';
+        });
+
+        var weeklyTotal = document.getElementById('weekly-total').textContent;
+        htmlBody += '<hr><p style="font-family:Arial,sans-serif;font-size:16px;font-weight:bold">Weekly Total: ' + weeklyTotal + ' hours</p>';
+
+        // ── CSV PASTE BLOCK (for Shaun to copy directly into Temp tab) ──────────
+        var csvLines = [];
+        days.forEach(function(day) {
+            if (isDayOff(day)) return;
+            var dateStr = dayDates[day];
+            collectDayRows(day).forEach(function(r) {
+                var act = r.activity.replace(/,/g,';').replace(/\n/g,' ');
+                csvLines.push(employee + ',' + dateStr + ',' + r.hours.toFixed(2) + ',,' +
+                    r.eventname + ',' + act + ',' + r.area);
+            });
+        });
+        if (csvLines.length > 0) {
+            htmlBody +=
+                '<hr>' +
+                '<p style="font-family:Arial,sans-serif;font-size:13px;font-weight:bold;color:#333;margin-bottom:4px">' +
+                    '&#128203; PASTE INTO TEMP TAB &mdash; copy the rows below and paste onto the bottom of the Temp tab in the workbook:' +
+                '</p>' +
+                '<pre style="font-family:monospace;font-size:12px;background:#f4f4f4;border:1px solid #ccc;' +
+                    'padding:10px;white-space:pre-wrap;line-height:1.6">' +
+                    'Name,Date,Hours,Department Code,Event/Project,Details,Area\n' +
+                    csvLines.join('\n') +
+                '</pre>' +
+                '<p style="font-family:Arial,sans-serif;font-size:11px;color:#888;margin-top:4px">' +
+                    'Department Code column is left blank &mdash; fill in after pasting.' +
+                '</p>';
+        }
+
+        var form = document.createElement('form');
+        form.method = 'POST';
+        form.action = 'https://formsubmit.co/shaun.w.coleman@gmail.com';
+        form.style.display = 'none';
+
+        function addField(name, val) {
+            var input = document.createElement('input');
+            input.name = name; input.value = val;
+            form.appendChild(input);
+        }
+        addField('_subject', 'AREA15 Production Sign-In — ' + employee + ' — Week of ' + weekStart);
+        addField('html', htmlBody);
+        addField('_captcha', 'false');
+
+        var employeeEmail = EMPLOYEE_EMAILS[employee];
+        if (employeeEmail) {
+            addField('_cc', employeeEmail);
+        }
+
+        document.body.appendChild(form);
+        form.submit();
+        document.body.removeChild(form);
+
+        alert('✅ Sign-in submitted! A copy has been sent to ' + (employeeEmail || 'you') + ' for your records.');
+    }
+
+    // ── INIT ──────────────────────────────────────────────────────────────────
+    days.forEach(createDaySection);
+</script>
+</body>
+</html>
