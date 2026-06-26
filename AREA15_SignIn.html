@@ -120,13 +120,14 @@
 </head>
 <body>
     <h1>AREA15 Production Department Sign-In Sheet</h1>
+    <p style="text-align:right;font-size:11px;color:#aaa;margin:0 12px 8px;">v1.0</p>
 
     <div class="instructions">
         <strong>How to use:</strong><br>
         &bull; Fill out at the end of each shift<br>
-        &bull; Tap <strong>Save Progress</strong> before closing &mdash; your entries are saved on this device<br>
-        &bull; Return later &rarr; tap <strong>Load Saved</strong> to pick up where you left off<br>
-        &bull; When your week is complete &rarr; tap <strong>&#10003; Submit</strong> &mdash; a copy will automatically be sent to your email
+        &bull; Tap <strong>&#128190; Save</strong> before closing &mdash; your entries are saved on this device<br>
+        &bull; Return later &rarr; tap <strong>&#128194; Load</strong> to pick up where you left off<br>
+        &bull; When your <em>entire week</em> is complete &rarr; scroll to the bottom and tap <strong>&#10003; Send Timesheet</strong>
     </div>
 
     <div class="top-controls">
@@ -143,7 +144,6 @@
         <div class="btn-row">
             <button class="save-btn" onclick="saveData()">&#128190; Save</button>
             <button class="load-btn" onclick="loadData()">&#128194; Load</button>
-            <button class="submit-btn" onclick="validateAndSend()">&#10003; Submit</button>
         </div>
     </div>
 
@@ -152,6 +152,42 @@
 
     <div class="weekly-total">
         <strong>Weekly Total Hours:</strong> <span id="weekly-total">0.00</span>
+    </div>
+
+    <div style="margin:20px 12px 40px;">
+        <button class="submit-btn" onclick="validateAndSend()"
+            style="width:100%;padding:18px;font-size:1.1em;border-radius:12px;letter-spacing:0.5px;">
+            &#10003; Send Timesheet
+        </button>
+        <p style="text-align:center;font-size:12px;color:#888;margin-top:8px;">
+            Only tap this when your full week is complete
+        </p>
+    </div>
+
+    <!-- Confirmation modal -->
+    <div id="confirm-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;
+        background:rgba(0,0,0,0.6);z-index:1000;align-items:center;justify-content:center;">
+        <div style="background:white;border-radius:16px;padding:24px;margin:20px;max-width:400px;
+            box-shadow:0 8px 32px rgba(0,0,0,0.3);">
+            <h2 style="margin:0 0 12px;color:#0066cc;font-size:1.1em;">&#9888; Ready to submit?</h2>
+            <div id="confirm-summary" style="font-size:14px;line-height:1.7;margin-bottom:20px;
+                background:#f4f8ff;border-radius:8px;padding:12px;border:1px solid #c5d8f5;"></div>
+            <p style="font-size:13px;color:#555;margin:0 0 20px;">
+                This will send your timesheet to your manager. Make sure all your hours are correct before confirming.
+            </p>
+            <div style="display:flex;gap:10px;">
+                <button onclick="cancelSubmit()"
+                    style="flex:1;padding:14px;background:#ddd;color:#333;border:none;
+                    border-radius:8px;font-size:15px;font-weight:bold;cursor:pointer;">
+                    &#8592; Go Back
+                </button>
+                <button onclick="confirmSubmit()"
+                    style="flex:1;padding:14px;background:#28a745;color:white;border:none;
+                    border-radius:8px;font-size:15px;font-weight:bold;cursor:pointer;">
+                    &#10003; Confirm &amp; Send
+                </button>
+            </div>
+        </div>
     </div>
 
 <script>
@@ -713,6 +749,13 @@
         var isValid = true;
         document.querySelectorAll('.error').forEach(function(el) { el.classList.remove('error'); });
 
+        // Block empty submissions — must have at least one day with hours entered
+        var totalHours = parseFloat(document.getElementById('weekly-total').textContent) || 0;
+        if (totalHours <= 0) {
+            alert('❌ No hours have been entered yet. Fill out your shifts first, then tap Send Timesheet when your full week is complete.');
+            return;
+        }
+
         if (!document.getElementById('employee').value) {
             document.getElementById('employee').classList.add('error');
             isValid = false;
@@ -743,9 +786,38 @@
         });
 
         if (!isValid) {
-            alert('❌ Some required fields are missing (highlighted in red).');
+            alert('❌ Some required fields are missing (highlighted in red). Please complete them before submitting.');
             return;
         }
+
+        // Build confirmation summary
+        var employee = document.getElementById('employee').value || 'Unknown';
+        var summary = '<strong>Employee:</strong> ' + employee + '<br>';
+        summary += '<strong>Week of:</strong> ' + days[0] + '<br>';
+        summary += '<strong>Weekly Total:</strong> ' + totalHours.toFixed(2) + ' hrs<br><br>';
+
+        days.forEach(function(day) {
+            if (isDayOff(day)) return;
+            var dtotEl = document.getElementById(day + '-daily-total');
+            var dtot = dtotEl ? dtotEl.textContent : '0.00';
+            if (parseFloat(dtot) <= 0) return;
+            summary += '<strong>' + day + '</strong> — ' + dtot + ' hrs<br>';
+            collectDayRows(day).forEach(function(r) {
+                summary += '&nbsp;&nbsp;' + (r.eventname || '—') + ' / ' + r.hours.toFixed(2) + ' hrs<br>';
+            });
+        });
+
+        document.getElementById('confirm-summary').innerHTML = summary;
+        var modal = document.getElementById('confirm-modal');
+        modal.style.display = 'flex';
+    }
+
+    function cancelSubmit() {
+        document.getElementById('confirm-modal').style.display = 'none';
+    }
+
+    function confirmSubmit() {
+        document.getElementById('confirm-modal').style.display = 'none';
         submitToEmail();
     }
 
@@ -840,5 +912,6 @@
     // ── INIT ──────────────────────────────────────────────────────────────────
     days.forEach(createDaySection);
 </script>
+
 </body>
 </html>
