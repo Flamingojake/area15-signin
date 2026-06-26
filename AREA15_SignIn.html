@@ -78,8 +78,6 @@
             .day { margin: 8px 12px; background: white; border-radius: 12px;
                 box-shadow: 0 2px 8px rgba(0,0,0,0.1); overflow: hidden;
                 border: 1.5px solid #c5d8f5; }
-            .day-controls { padding: 0; display: flex; flex-direction: column;
-                margin-top: 10px; }
             /* mobile card per row */
             .desktop-table { display: none; } /* hide table on mobile */
             .mobile-card { display: block; background: white; border: 1px solid #c5d8f5;
@@ -112,15 +110,17 @@
             .daily-total-row { text-align: right; font-weight: bold; font-size: 14px;
                 color: #0066cc; margin-top: 8px; padding-top: 8px;
                 border-top: 1px solid #c5d8f5; }
-            /* symmetrical button row */
+            /* symmetrical button row - equal 8px gap between all three always */
+            .day-controls { padding: 0; display: flex; flex-direction: column;
+                margin-top: 10px; gap: 8px; }
             .add-btn, .delete-btn, .day-off-btn {
-                width: 100%; display: block; text-align: center; margin-bottom: 8px; }
+                width: 100%; display: block; text-align: center; margin: 0; }
         }
     </style>
 </head>
 <body>
     <h1>AREA15 Production Department Sign-In Sheet</h1>
-    <p style="text-align:right;font-size:11px;color:#aaa;margin:0 12px 8px;">v1.0</p>
+    <p style="text-align:right;font-size:11px;color:#aaa;margin:0 12px 8px;">v1.1</p>
 
     <div class="instructions">
         <strong>How to use:</strong><br>
