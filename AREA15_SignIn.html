@@ -375,27 +375,27 @@
         card.innerHTML =
             '<div class="field-group">' +
                 '<div class="field-label">Project / Event</div>' +
-                '<select class="eventname" onchange="toggleOtherEvent(this)">' + eventOptions() + '</select>' +
-                '<input type="text" class="eventname-other" placeholder="Type event/project name" style="display:none;margin-top:6px">' +
+                '<select class="eventname" onchange="toggleOtherEvent(this);syncCardToRow(this)">' + eventOptions() + '</select>' +
+                '<input type="text" class="eventname-other" placeholder="Type event/project name" style="display:none;margin-top:6px" oninput="syncCardToRow(this)">' +
             '</div>' +
             '<div class="field-group">' +
                 '<div class="field-label">Activity</div>' +
-                '<select class="activity" onchange="toggleOtherActivity(this)">' + activityOptions() + '</select>' +
-                '<input type="text" class="activity-other" placeholder="Type activity" style="display:none;margin-top:6px">' +
+                '<select class="activity" onchange="toggleOtherActivity(this);syncCardToRow(this)">' + activityOptions() + '</select>' +
+                '<input type="text" class="activity-other" placeholder="Type activity" style="display:none;margin-top:6px" oninput="syncCardToRow(this)">' +
             '</div>' +
             '<div class="hours-row">' +
                 '<div class="field-group">' +
                     '<div class="field-label">Area</div>' +
-                    '<select class="area">' + areaOptions() + '</select>' +
+                    '<select class="area" onchange="syncCardToRow(this)">' + areaOptions() + '</select>' +
                 '</div>' +
                 '<div class="field-group">' +
                     '<div class="field-label">Total Hours</div>' +
-                    '<input type="number" class="row-total" min="0" step="0.25" placeholder="0.00" oninput="syncFromMobile(this)">' +
+                    '<input type="number" class="row-total" min="0" step="0.25" placeholder="0.00" oninput="syncCardToRow(this)">' +
                 '</div>' +
             '</div>' +
             '<div class="field-group">' +
                 '<div class="field-label">Additional Comments</div>' +
-                '<textarea class="comments" rows="2" placeholder="Notes / safety comments..."></textarea>' +
+                '<textarea class="comments" rows="2" placeholder="Notes / safety comments..." oninput="syncCardToRow(this)"></textarea>' +
             '</div>';
         cards.appendChild(card);
 
@@ -403,22 +403,42 @@
         updateWeeklyTotal();
     }
 
-    function syncFromDesktop(input) {
-        // When user edits hours in the desktop table row, sync to the matching mobile card
-        var tr = input.closest('tr');
-        var idx = tr.getAttribute('data-row');
-        var day = tr.closest('.day').id.replace('day-','');
-        var card = document.querySelector('#' + CSS.escape('day-' + day) + ' .mobile-card[data-row="' + idx + '"]');
-        if (card) { var mc = card.querySelector('.row-total'); if (mc) mc.value = input.value; }
-        updateDailyFromRow(input);
-    }
-    function syncFromMobile(input) {
-        // When user edits hours in the mobile card, sync to the matching desktop table row
-        var card = input.closest('.mobile-card');
+    function syncCardToRow(el) {
+        // Sync ALL fields from the mobile card to the hidden desktop row so
+        // validation and data collection always work correctly regardless of
+        // which view the user is filling in.
+        var card = el.closest('.mobile-card');
+        if (!card) return;
         var idx = card.getAttribute('data-row');
-        var day = card.closest('.day').id.replace('day-','');
-        var tr = document.querySelector('#' + CSS.escape('day-' + day) + '-rows tr[data-row="' + idx + '"]');
-        if (tr) { var dt = tr.querySelector('.row-total'); if (dt) dt.value = input.value; }
+        var day = card.closest('.day').id.replace('day-', '');
+        var tr  = document.querySelector('#' + CSS.escape(day + '-rows') + ' tr[data-row="' + idx + '"]');
+        if (!tr) return;
+
+        function copyField(cls) {
+            var src = card.querySelector('.' + cls);
+            var dst = tr.querySelector('.' + cls);
+            if (src && dst) dst.value = src.value;
+        }
+        copyField('eventname');
+        copyField('eventname-other');
+        copyField('activity');
+        copyField('activity-other');
+        copyField('area');
+        copyField('row-total');
+        copyField('comments');
+
+        // Update daily total from the desktop row (single source of truth)
+        var dayDiv = document.getElementById('day-' + day);
+        updateDailyTotal(dayDiv);
+        updateWeeklyTotal();
+    }
+    function syncFromDesktop(input) {
+        // Desktop row changed — sync hours to matching mobile card
+        var tr  = input.closest('tr');
+        var idx = tr.getAttribute('data-row');
+        var day = tr.closest('.day').id.replace('day-', '');
+        var card = document.querySelector('#' + CSS.escape(day + '-cards') + ' .mobile-card[data-row="' + idx + '"]');
+        if (card) { var mc = card.querySelector('.row-total'); if (mc) mc.value = input.value; }
         updateDailyFromRow(input);
     }
 
@@ -557,25 +577,25 @@
                     card.innerHTML =
                         '<div class="field-group">' +
                             '<div class="field-label">Project / Event</div>' +
-                            '<select class="eventname" onchange="toggleOtherEvent(this)">' + eventOptions(r.eventname) + '</select>' +
+                            '<select class="eventname" onchange="toggleOtherEvent(this);syncCardToRow(this)">' + eventOptions(r.eventname) + '</select>' +
                             '<input type="text" class="eventname-other" value="' + esc(isOtherEvent ? r.eventname : '') +
-                            '" placeholder="Type event/project name" style="display:' + (isOtherEvent ? 'block' : 'none') + ';margin-top:6px">' +
+                            '" placeholder="Type event/project name" style="display:' + (isOtherEvent ? 'block' : 'none') + ';margin-top:6px" oninput="syncCardToRow(this)">' +
                         '</div>' +
                         '<div class="field-group">' +
                             '<div class="field-label">Activity</div>' +
-                            '<select class="activity" onchange="toggleOtherActivity(this)">' + activityOptions(r.activity) + '</select>' +
+                            '<select class="activity" onchange="toggleOtherActivity(this);syncCardToRow(this)">' + activityOptions(r.activity) + '</select>' +
                             '<input type="text" class="activity-other" value="' + esc(isOtherActivity ? r.activity : '') +
-                            '" placeholder="Type activity" style="display:' + (isOtherActivity ? 'block' : 'none') + ';margin-top:6px">' +
+                            '" placeholder="Type activity" style="display:' + (isOtherActivity ? 'block' : 'none') + ';margin-top:6px" oninput="syncCardToRow(this)">' +
                         '</div>' +
                         '<div class="hours-row">' +
                             '<div class="field-group"><div class="field-label">Area</div>' +
-                                '<select class="area">' + areaOptions(r.area) + '</select></div>' +
+                                '<select class="area" onchange="syncCardToRow(this)">' + areaOptions(r.area) + '</select></div>' +
                             '<div class="field-group"><div class="field-label">Total Hours</div>' +
                                 '<input type="number" class="row-total" min="0" step="0.25" value="' + (r.hours||'') +
-                                '" placeholder="0.00" oninput="syncFromMobile(this)"></div>' +
+                                '" placeholder="0.00" oninput="syncCardToRow(this)"></div>' +
                         '</div>' +
                         '<div class="field-group"><div class="field-label">Additional Comments</div>' +
-                            '<textarea class="comments" rows="2">' + esc(r.comments) + '</textarea></div>';
+                            '<textarea class="comments" rows="2" oninput="syncCardToRow(this)">' + esc(r.comments) + '</textarea></div>';
                     if (cards) cards.appendChild(card);
                 });
                 if (!dayData.rows || dayData.rows.length === 0) addRow(day);
