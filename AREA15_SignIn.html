@@ -59,7 +59,6 @@
                 padding: 12px; background: #111; border-bottom: 1px solid #333; }
             .top-controls select { font-size: 16px; padding: 10px; border: 2px solid #0066cc;
                 border-radius: 8px; background: #222; color: #eee; flex: 1 1 100%; }
-            .top-controls .btn-row { display: flex; gap: 8px; width: 100%; }
             button { padding: 12px 10px; font-size: 14px; border-radius: 8px;
                 font-weight: bold; flex: 1; }
             .submit-btn { background: #28a745; color: white; font-size: 15px; padding: 14px; }
@@ -121,7 +120,7 @@
 </head>
 <body>
     <h1>AREA15 Production Department Sign-In Sheet</h1>
-    <p style="text-align:right;font-size:11px;color:#555;margin:0 12px 8px;">v2.0</p>
+    <p style="text-align:right;font-size:11px;color:#555;margin:0 12px 8px;">v2.5</p>
 
     <div class="instructions">
         <strong>How to use:</strong><br>
@@ -142,6 +141,9 @@
             <option>Nicholas Padilla</option>
             <option>Ryan Miller</option>
             <option>Shaun Coleman</option>
+        </select>
+        <select id="week-picker" onchange="changeWeek(this.value)">
+            <option value="">-- Select week --</option>
         </select>
         <div class="btn-row">
             <button class="save-btn" onclick="saveData()">&#128190; Save</button>
@@ -168,18 +170,19 @@
 
     <!-- Confirmation modal -->
     <div id="confirm-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;
-        background:rgba(0,0,0,0.6);z-index:1000;align-items:center;justify-content:center;">
-        <div style="background:white;border-radius:16px;padding:24px;margin:20px;max-width:400px;
-            box-shadow:0 8px 32px rgba(0,0,0,0.3);">
-            <h2 style="margin:0 0 12px;color:#0066cc;font-size:1.1em;">&#9888; Ready to submit?</h2>
+        background:rgba(0,0,0,0.85);z-index:1000;align-items:center;justify-content:center;">
+        <div style="background:#111;border-radius:16px;padding:24px;margin:20px;max-width:400px;
+            box-shadow:0 8px 32px rgba(0,0,0,0.8);border:1.5px solid #1a3a5c;">
+            <h2 style="margin:0 0 12px;color:#4da6ff;font-size:1.1em;">&#9888; Ready to submit?</h2>
             <div id="confirm-summary" style="font-size:14px;line-height:1.7;margin-bottom:20px;
-                background:#f4f8ff;border-radius:8px;padding:12px;border:1px solid #c5d8f5;"></div>
-            <p style="font-size:13px;color:#555;margin:0 0 20px;">
+                background:#1a1a1a;border-radius:10px;padding:12px;border:1px solid #1a3a5c;
+                color:#eee;"></div>
+            <p style="font-size:13px;color:#aaa;margin:0 0 20px;">
                 This will send your timesheet to your manager. Make sure all your hours are correct before confirming.
             </p>
             <div style="display:flex;gap:10px;">
                 <button onclick="cancelSubmit()"
-                    style="flex:1;padding:14px;background:#ddd;color:#333;border:none;
+                    style="flex:1;padding:14px;background:#333;color:#eee;border:none;
                     border-radius:8px;font-size:15px;font-weight:bold;cursor:pointer;">
                     &#8592; Go Back
                 </button>
@@ -325,14 +328,66 @@
     // Auto-generate current week Mon-Sun. "days" holds display labels (with weekday name) used
     // for headings/element IDs; "dayDates" holds the matching clean M/D/YYYY value used in the
     // CSV export, since Temp needs a plain date, not "Monday 6/8/2026".
-    function getWeekDays() {
+    // ── WEEK PICKER ───────────────────────────────────────────────────────────
+    // Build a list of Mondays: 8 weeks back through 4 weeks ahead, newest first.
+    // Employee picks their week from this dropdown; the day sections re-render.
+    function buildWeekList() {
         var today = new Date();
-        var dow = today.getDay(); // 0=Sun
-        var monday = new Date(today);
-        monday.setDate(today.getDate() - ((dow + 6) % 7));
+        var dow = today.getDay();
+        var thisMonday = new Date(today);
+        thisMonday.setDate(today.getDate() - ((dow + 6) % 7));
+        var mondays = [];
+        for (var i = -8; i <= 4; i++) {
+            var d = new Date(thisMonday);
+            d.setDate(thisMonday.getDate() + i * 7);
+            mondays.push(d);
+        }
+        // newest first
+        mondays.sort(function(a, b) { return b - a; });
+        return mondays;
+    }
+
+    function mondayToLabel(d) {
+        return 'Week of ' + (d.getMonth()+1) + '/' + d.getDate() + '/' + d.getFullYear();
+    }
+    function mondayToValue(d) {
+        return d.getFullYear() + '-' + (d.getMonth()+1) + '-' + d.getDate();
+    }
+    function parseMondayValue(val) {
+        var parts = val.split('-');
+        return new Date(parseInt(parts[0]), parseInt(parts[1])-1, parseInt(parts[2]));
+    }
+
+    // Populate week picker
+    var weekMondays = buildWeekList();
+    var picker = document.getElementById('week-picker');
+    weekMondays.forEach(function(d) {
+        var opt = document.createElement('option');
+        opt.value = mondayToValue(d);
+        opt.textContent = mondayToLabel(d);
+        // Pre-select the current week
+        var today2 = new Date();
+        var dow2 = today2.getDay();
+        var thisMon = new Date(today2);
+        thisMon.setDate(today2.getDate() - ((dow2 + 6) % 7));
+        if (d.getFullYear() === thisMon.getFullYear() &&
+            d.getMonth() === thisMon.getMonth() &&
+            d.getDate() === thisMon.getDate()) {
+            opt.selected = true;
+        }
+        picker.appendChild(opt);
+    });
+
+    function getWeekDays(mondayOverride) {
+        var monday = mondayOverride || (function() {
+            var today = new Date();
+            var dow = today.getDay();
+            var m = new Date(today);
+            m.setDate(today.getDate() - ((dow + 6) % 7));
+            return m;
+        })();
         var names = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
-        var labels = [];
-        var dates = [];
+        var labels = [], dates = [];
         for (var i = 0; i < 7; i++) {
             var d = new Date(monday);
             d.setDate(monday.getDate() + i);
@@ -343,7 +398,26 @@
         return { labels: labels, dates: dates, monday: monday };
     }
 
-    var weekInfo = getWeekDays();
+    function changeWeek(val) {
+        if (!val) return;
+        var monday = parseMondayValue(val);
+        var weekInfo = getWeekDays(monday);
+        days = weekInfo.labels;
+        dayDates = {};
+        days.forEach(function(day, i) { dayDates[day] = weekInfo.dates[i]; });
+        EVENT_NAMES_THIS_WINDOW = eventOptionsForThisWeek(monday);
+        // Re-render all day sections
+        document.getElementById('days').innerHTML = '';
+        days.forEach(createDaySection);
+        updateWeeklyTotal();
+    }
+
+    // Init with current week
+    var _initMonday = picker.value ? parseMondayValue(picker.value) : (function() {
+        var today = new Date(); var dow = today.getDay();
+        var m = new Date(today); m.setDate(today.getDate() - ((dow+6)%7)); return m;
+    })();
+    var weekInfo = getWeekDays(_initMonday);
     var days = weekInfo.labels;
     var dayDates = {};
     days.forEach(function(day, i) { dayDates[day] = weekInfo.dates[i]; });
@@ -374,11 +448,11 @@
                     '</div>' +
                     '<button class="delete-btn" id="' + day + '-delete-btn" onclick="deleteLastRow(\'' + day + '\')" style="display:none">Delete Last Row</button>' +
                 '</div>' +
-                '<div class="notes-row">' +
+                '<div class="notes-row" id="' + day + '-notes-row">' +
                     '<label for="' + day + '-notes">Daily Notes / Safety:</label>' +
                     '<textarea id="' + day + '-notes" rows="3"></textarea>' +
                 '</div>' +
-                '<div class="break-row">' +
+                '<div class="break-row" id="' + day + '-break-row">' +
                     '<div class="break-field"><label>Break 1 (hrs)</label><input type="number" id="' + day + '-break1" min="0" step="0.25" placeholder="0.00"></div>' +
                     '<div class="break-field"><label>Break 2 (hrs)</label><input type="number" id="' + day + '-break2" min="0" step="0.25" placeholder="0.00"></div>' +
                 '</div>' +
@@ -389,22 +463,28 @@
     }
 
     function toggleDayOff(day, btn) {
-        var banner = document.getElementById(day + '-off-banner');
-        var tbody  = document.getElementById(day + '-rows');
-        var cards  = document.getElementById(day + '-cards');
-        var notes  = document.getElementById(day + '-notes');
-        var totalEl = document.getElementById(day + '-daily-total');
-        var addBtn  = document.getElementById(day + '-add-btn');
-        var delBtn  = document.getElementById(day + '-delete-btn');
-        var isOff  = banner.style.display !== 'none';
+        var banner   = document.getElementById(day + '-off-banner');
+        var tbody    = document.getElementById(day + '-rows');
+        var cards    = document.getElementById(day + '-cards');
+        var notes    = document.getElementById(day + '-notes');
+        var notesRow = document.getElementById(day + '-notes-row');
+        var breakRow = document.getElementById(day + '-break-row');
+        var totalEl  = document.getElementById(day + '-daily-total');
+        var addBtn   = document.getElementById(day + '-add-btn');
+        var delBtn   = document.getElementById(day + '-delete-btn');
+        var isOff    = banner.style.display !== 'none';
 
         if (isOff) {
+            // Restoring from day off
             banner.style.display = 'none';
             btn.textContent = 'Mark as Day Off';
             btn.style.backgroundColor = '#008800';
             if (addBtn) addBtn.style.display = 'block';
+            if (notesRow) notesRow.style.display = 'block';
+            if (breakRow) breakRow.style.display = 'flex';
             addRow(day);
         } else {
+            // Marking as day off
             banner.style.display = 'block';
             btn.textContent = 'Remove Day Off';
             btn.style.backgroundColor = '#cc8800';
@@ -414,6 +494,8 @@
             if (totalEl) totalEl.textContent = '0.00';
             if (addBtn) addBtn.style.display = 'none';
             if (delBtn) delBtn.style.display = 'none';
+            if (notesRow) notesRow.style.display = 'none';
+            if (breakRow) breakRow.style.display = 'none';
             var b1 = document.getElementById(day + '-break1');
             var b2 = document.getElementById(day + '-break2');
             if (b1) b1.value = '';
@@ -591,7 +673,8 @@
 
     // ── SAVE ──────────────────────────────────────────────────────────────────
     function saveData() {
-        var data = { employee: document.getElementById('employee').value, days: {} };
+        var data = { employee: document.getElementById('employee').value,
+                     week: document.getElementById('week-picker').value, days: {} };
         days.forEach(function(day) {
             var isOff = isDayOff(day);
             var notes = document.getElementById(day + '-notes') ? document.getElementById(day + '-notes').value : '';
@@ -621,6 +704,10 @@
         if (!saved) { alert('No saved data found.'); return; }
         var data = JSON.parse(saved);
         document.getElementById('employee').value = data.employee || '';
+        if (data.week) {
+            document.getElementById('week-picker').value = data.week;
+            changeWeek(data.week);
+        }
 
         days.forEach(function(day) {
             var dayData = data.days[day];
@@ -902,6 +989,10 @@
     function confirmSubmit() {
         document.getElementById('confirm-modal').style.display = 'none';
 
+        // Open the new tab IMMEDIATELY — iOS blocks window.open() if it's not
+        // the first thing that happens inside a user tap handler.
+        var win = window.open('', '_blank');
+
         // Build the readable summary page and open it in a new tab
         var employee  = document.getElementById('employee').value || 'Unnamed Employee';
         var weekStart = days[0];
@@ -973,9 +1064,10 @@
 
         page += '</body></html>';
 
-        var win = window.open('', '_blank');
-        win.document.write(page);
-        win.document.close();
+        if (win) {
+            win.document.write(page);
+            win.document.close();
+        }
 
         // Also send the email with raw data
         submitToEmail();
@@ -987,46 +1079,7 @@
         var weekEnd   = days[6];
         var weeklyTotal = document.getElementById('weekly-total').textContent;
 
-        // ── Build HTML email (FormSubmit renders this correctly) ──────────────
-        var S = 'style="font-family:Courier New,monospace;font-size:13px;margin:0;line-height:1.8"';
-        var H = 'style="font-family:Arial,sans-serif;';
-        var msg = '<div style="font-family:Courier New,monospace;font-size:13px;line-height:1.8;max-width:600px">';
-
-        msg += '<p ' + H + 'font-size:16px;font-weight:bold;margin:0 0 4px">AREA15 Production Department Sign-In</p>';
-        msg += '<p ' + H + 'font-size:13px;margin:0 0 2px">Employee: <strong>' + employee + '</strong></p>';
-        msg += '<p ' + H + 'font-size:13px;margin:0 0 2px">Week of: ' + weekStart + ' to ' + weekEnd + '</p>';
-        msg += '<p ' + H + 'font-size:13px;margin:0 0 16px">Weekly Total: <strong>' + weeklyTotal + ' hrs</strong></p>';
-
-        days.forEach(function(day) {
-            if (isDayOff(day)) return;
-            var dtotEl = document.getElementById(day + '-daily-total');
-            var dtot   = dtotEl ? dtotEl.textContent : '0.00';
-            msg += '<p ' + H + 'font-size:13px;font-weight:bold;color:#0066cc;margin:12px 0 4px;border-top:1px solid #ccc;padding-top:8px">';
-            msg += day + ' &mdash; ' + dtot + ' hrs</p>';
-
-            collectDayRows(day).forEach(function(r) {
-                msg += '<table style="margin:4px 0 8px 12px;border-collapse:collapse;font-size:12px">';
-                msg += '<tr><td style="color:#666;padding-right:12px;white-space:nowrap">Event:</td><td><strong>' + (r.eventname||'—') + '</strong></td></tr>';
-                msg += '<tr><td style="color:#666;padding-right:12px">Activity:</td><td>' + (r.activity||'—') + '</td></tr>';
-                msg += '<tr><td style="color:#666;padding-right:12px">Area:</td><td>' + (r.area||'—') + '</td></tr>';
-                msg += '<tr><td style="color:#666;padding-right:12px">Hours:</td><td><strong>' + r.hours.toFixed(2) + '</strong></td></tr>';
-                if (r.comments) msg += '<tr><td style="color:#666;padding-right:12px">Notes:</td><td>' + r.comments + '</td></tr>';
-                msg += '</table>';
-            });
-
-            var b1El = document.getElementById(day + '-break1');
-            var b2El = document.getElementById(day + '-break2');
-            var notesEl = document.getElementById(day + '-notes');
-            if ((b1El && b1El.value) || (b2El && b2El.value))
-                msg += '<p style="font-size:12px;margin:0 0 4px 12px;color:#555">Break 1: ' + (b1El&&b1El.value?b1El.value:'—') + ' hr &nbsp;|&nbsp; Break 2: ' + (b2El&&b2El.value?b2El.value:'—') + ' hr</p>';
-            if (notesEl && notesEl.value.trim())
-                msg += '<p style="font-size:12px;margin:0 0 4px 12px;color:#555">Safety Notes: ' + notesEl.value + '</p>';
-        });
-
         // ── Build print view URL ─────────────────────────────────────────────
-        // Encode the submission data into a URL parameter pointing back to this
-        // page. When you click the link in your email, the page detects the
-        // parameter and renders a clean printable summary instead of the form.
         var printData = {
             employee: employee,
             weekStart: weekStart,
@@ -1042,9 +1095,7 @@
             var b2El = document.getElementById(day + '-break2');
             var notesEl = document.getElementById(day + '-notes');
             printData.days.push({
-                day: day,
-                total: dtot,
-                rows: collectDayRows(day),
+                day: day, total: dtot, rows: collectDayRows(day),
                 break1: b1El ? b1El.value : '',
                 break2: b2El ? b2El.value : '',
                 notes: notesEl ? notesEl.value : ''
@@ -1054,7 +1105,7 @@
         var pageUrl = window.location.href.split('?')[0];
         var printUrl = pageUrl + '?print=' + printParam;
 
-        // CSV paste block
+        // ── Build CSV lines ──────────────────────────────────────────────────
         var csvLines = [];
         days.forEach(function(day) {
             if (isDayOff(day)) return;
@@ -1065,13 +1116,18 @@
                     r.eventname + ',' + act + ',' + r.area);
             });
         });
+
+        // ── Email: just the CSV and the print button ─────────────────────────
+        var msg = '<div style="font-family:Courier New,monospace;font-size:13px;max-width:640px">';
+        msg += '<p style="font-family:Arial,sans-serif;font-size:13px;margin:0 0 8px">';
+        msg += '<strong>' + employee + '</strong> &mdash; Week of ' + weekStart + ' &mdash; <strong>' + weeklyTotal + ' hrs total</strong></p>';
+
         if (csvLines.length > 0) {
-            msg += '<p style="font-family:Arial,sans-serif;font-size:12px;font-weight:bold;margin:16px 0 4px;border-top:2px solid #333;padding-top:10px">PASTE INTO TEMP TAB:</p>';
-            msg += '<pre style="font-family:Courier New,monospace;font-size:11px;background:#f4f4f4;padding:10px;border:1px solid #ccc;line-height:1.6;white-space:pre-wrap">';
+            msg += '<pre style="font-family:Courier New,monospace;font-size:12px;background:#f4f4f4;';
+            msg += 'border:1px solid #ccc;padding:12px;white-space:pre;line-height:1.8;margin:0 0 16px">';
             msg += 'Name,Date,Hours,Department Code,Event/Project,Details,Area&#10;';
             msg += csvLines.join('&#10;');
             msg += '</pre>';
-            msg += '<p style="font-size:11px;color:#888;margin:4px 0 0">(Department Code column is blank — fill in after pasting)</p>';
         }
 
         msg += '<div style="margin:20px 0;border-top:2px solid #0066cc;padding-top:16px">';
