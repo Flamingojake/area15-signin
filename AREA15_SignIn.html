@@ -120,7 +120,7 @@
 </head>
 <body>
     <h1>AREA15 Production Department Sign-In Sheet</h1>
-    <p style="text-align:right;font-size:11px;color:#aaa;margin:0 12px 8px;">v1.1</p>
+    <p style="text-align:right;font-size:11px;color:#aaa;margin:0 12px 8px;">v1.2</p>
 
     <div class="instructions">
         <strong>How to use:</strong><br>
@@ -827,42 +827,43 @@
         var weekEnd   = days[6];
         var weeklyTotal = document.getElementById('weekly-total').textContent;
 
-        // ── Build plain text message ──────────────────────────────────────────
-        // Use encoded line breaks so FormSubmit preserves spacing correctly.
-        var NL = '%0A';   // URL-encoded newline that survives FormSubmit processing
-        var lines = [];
+        // ── Build HTML email (FormSubmit renders this correctly) ──────────────
+        var S = 'style="font-family:Courier New,monospace;font-size:13px;margin:0;line-height:1.8"';
+        var H = 'style="font-family:Arial,sans-serif;';
+        var msg = '<div style="font-family:Courier New,monospace;font-size:13px;line-height:1.8;max-width:600px">';
 
-        lines.push('AREA15 Production Department Sign-In Sheet');
-        lines.push('Employee: ' + employee);
-        lines.push('Week of:  ' + weekStart + ' to ' + weekEnd);
-        lines.push('Weekly Total: ' + weeklyTotal + ' hrs');
-        lines.push('');
+        msg += '<p ' + H + 'font-size:16px;font-weight:bold;margin:0 0 4px">AREA15 Production Department Sign-In</p>';
+        msg += '<p ' + H + 'font-size:13px;margin:0 0 2px">Employee: <strong>' + employee + '</strong></p>';
+        msg += '<p ' + H + 'font-size:13px;margin:0 0 2px">Week of: ' + weekStart + ' to ' + weekEnd + '</p>';
+        msg += '<p ' + H + 'font-size:13px;margin:0 0 16px">Weekly Total: <strong>' + weeklyTotal + ' hrs</strong></p>';
 
         days.forEach(function(day) {
-            if (isDayOff(day)) return; // skip day-off days entirely to keep it clean
+            if (isDayOff(day)) return;
             var dtotEl = document.getElementById(day + '-daily-total');
             var dtot   = dtotEl ? dtotEl.textContent : '0.00';
-            lines.push('--- ' + day + ' --- (' + dtot + ' hrs)');
+            msg += '<p ' + H + 'font-size:13px;font-weight:bold;color:#0066cc;margin:12px 0 4px;border-top:1px solid #ccc;padding-top:8px">';
+            msg += day + ' &mdash; ' + dtot + ' hrs</p>';
 
             collectDayRows(day).forEach(function(r) {
-                lines.push('  Event:    ' + (r.eventname || '—'));
-                lines.push('  Activity: ' + (r.activity  || '—'));
-                lines.push('  Area:     ' + (r.area      || '—'));
-                lines.push('  Hours:    ' + r.hours.toFixed(2));
-                if (r.comments) lines.push('  Notes:    ' + r.comments);
-                lines.push('');
+                msg += '<table style="margin:4px 0 8px 12px;border-collapse:collapse;font-size:12px">';
+                msg += '<tr><td style="color:#666;padding-right:12px;white-space:nowrap">Event:</td><td><strong>' + (r.eventname||'—') + '</strong></td></tr>';
+                msg += '<tr><td style="color:#666;padding-right:12px">Activity:</td><td>' + (r.activity||'—') + '</td></tr>';
+                msg += '<tr><td style="color:#666;padding-right:12px">Area:</td><td>' + (r.area||'—') + '</td></tr>';
+                msg += '<tr><td style="color:#666;padding-right:12px">Hours:</td><td><strong>' + r.hours.toFixed(2) + '</strong></td></tr>';
+                if (r.comments) msg += '<tr><td style="color:#666;padding-right:12px">Notes:</td><td>' + r.comments + '</td></tr>';
+                msg += '</table>';
             });
 
             var b1El = document.getElementById(day + '-break1');
             var b2El = document.getElementById(day + '-break2');
-            if (b1El && b1El.value) lines.push('  Break 1: ' + b1El.value + ' hr(s)');
-            if (b2El && b2El.value) lines.push('  Break 2: ' + b2El.value + ' hr(s)');
             var notesEl = document.getElementById(day + '-notes');
-            if (notesEl && notesEl.value.trim()) lines.push('  Safety Notes: ' + notesEl.value);
-            lines.push('');
+            if ((b1El && b1El.value) || (b2El && b2El.value))
+                msg += '<p style="font-size:12px;margin:0 0 4px 12px;color:#555">Break 1: ' + (b1El&&b1El.value?b1El.value:'—') + ' hr &nbsp;|&nbsp; Break 2: ' + (b2El&&b2El.value?b2El.value:'—') + ' hr</p>';
+            if (notesEl && notesEl.value.trim())
+                msg += '<p style="font-size:12px;margin:0 0 4px 12px;color:#555">Safety Notes: ' + notesEl.value + '</p>';
         });
 
-        // ── CSV paste block ───────────────────────────────────────────────────
+        // CSV paste block
         var csvLines = [];
         days.forEach(function(day) {
             if (isDayOff(day)) return;
@@ -874,13 +875,14 @@
             });
         });
         if (csvLines.length > 0) {
-            lines.push('--- PASTE INTO TEMP TAB ---');
-            lines.push('Name,Date,Hours,Department Code,Event/Project,Details,Area');
-            csvLines.forEach(function(l) { lines.push(l); });
-            lines.push('(Department Code column is blank - fill in after pasting)');
+            msg += '<p style="font-family:Arial,sans-serif;font-size:12px;font-weight:bold;margin:16px 0 4px;border-top:2px solid #333;padding-top:10px">PASTE INTO TEMP TAB:</p>';
+            msg += '<pre style="font-family:Courier New,monospace;font-size:11px;background:#f4f4f4;padding:10px;border:1px solid #ccc;line-height:1.6;white-space:pre-wrap">';
+            msg += 'Name,Date,Hours,Department Code,Event/Project,Details,Area\n';
+            msg += csvLines.join('\n');
+            msg += '</pre>';
+            msg += '<p style="font-size:11px;color:#888;margin:4px 0 0">(Department Code column is blank — fill in after pasting)</p>';
         }
-
-        var msg = lines.join('\r\n');
+        msg += '</div>';
 
         var form = document.createElement('form');
         form.method = 'POST';
@@ -893,8 +895,7 @@
             form.appendChild(input);
         }
         addField('_subject', 'AREA15 Sign-In — ' + employee + ' — Week of ' + weekStart);
-        addField('message', msg);
-        addField('_template', 'none');
+        addField('html', msg);
         addField('_captcha', 'false');
 
         var employeeEmail = EMPLOYEE_EMAILS[employee];
