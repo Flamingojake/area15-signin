@@ -120,7 +120,7 @@
 </head>
 <body>
     <h1>AREA15 Production Department Sign-In Sheet</h1>
-    <p style="text-align:right;font-size:11px;color:#aaa;margin:0 12px 8px;">v1.2</p>
+    <p style="text-align:right;font-size:11px;color:#aaa;margin:0 12px 8px;">v1.3</p>
 
     <div class="instructions">
         <strong>How to use:</strong><br>
@@ -877,8 +877,8 @@
         if (csvLines.length > 0) {
             msg += '<p style="font-family:Arial,sans-serif;font-size:12px;font-weight:bold;margin:16px 0 4px;border-top:2px solid #333;padding-top:10px">PASTE INTO TEMP TAB:</p>';
             msg += '<pre style="font-family:Courier New,monospace;font-size:11px;background:#f4f4f4;padding:10px;border:1px solid #ccc;line-height:1.6;white-space:pre-wrap">';
-            msg += 'Name,Date,Hours,Department Code,Event/Project,Details,Area\n';
-            msg += csvLines.join('\n');
+            msg += 'Name,Date,Hours,Department Code,Event/Project,Details,Area&#10;';
+            msg += csvLines.join('&#10;');
             msg += '</pre>';
             msg += '<p style="font-size:11px;color:#888;margin:4px 0 0">(Department Code column is blank — fill in after pasting)</p>';
         }
