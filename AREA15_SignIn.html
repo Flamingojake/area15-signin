@@ -123,7 +123,7 @@
 </head>
 <body>
     <h1>AREA15 Production Department Sign-In Sheet</h1>
-    <p style="text-align:right;font-size:11px;color:#aaa;margin:0 12px 8px;">v1.6</p>
+    <p style="text-align:right;font-size:11px;color:#aaa;margin:0 12px 8px;">v1.8</p>
 
     <div class="instructions">
         <strong>How to use:</strong><br>
@@ -195,6 +195,56 @@
     </div>
 
 <script>
+    // ── PRINT VIEW ──────────────────────────────────────────────────────────
+    // When the page is opened with ?print= in the URL (from the email link),
+    // render a clean printable summary and hide the form entirely.
+    (function() {
+        var params = new URLSearchParams(window.location.search);
+        var printParam = params.get('print');
+        if (!printParam) return;
+
+        try {
+            var data = JSON.parse(decodeURIComponent(atob(printParam)));
+        } catch(e) {
+            document.body.innerHTML = '<p style="font-family:Arial,sans-serif;padding:30px;color:red">Could not load timesheet data. The link may have expired or been truncated.</p>';
+            return;
+        }
+
+        var S = 'style="font-family:Arial,sans-serif;';
+        var html = '<div style="font-family:Arial,sans-serif;max-width:640px;margin:30px auto;padding:0 20px;color:#222">';
+        html += '<h1 style="font-size:1.3em;color:#0066cc;border-bottom:2px solid #0066cc;padding-bottom:8px">AREA15 Production Department Sign-In</h1>';
+        html += '<p style="font-size:14px;margin:4px 0">Employee: <strong>' + data.employee + '</strong></p>';
+        html += '<p style="font-size:14px;margin:4px 0">Week of: ' + data.weekStart + ' to ' + data.weekEnd + '</p>';
+        html += '<p style="font-size:14px;margin:4px 0 16px">Weekly Total: <strong>' + data.weeklyTotal + ' hrs</strong></p>';
+        html += '<p style="margin-bottom:16px"><button onclick="window.print()" style="padding:8px 16px;background:#0066cc;color:white;border:none;border-radius:6px;cursor:pointer;font-size:13px">&#128438; Print / Save as PDF</button></p>';
+
+        data.days.forEach(function(d) {
+            html += '<h2 style="font-size:1em;color:#0066cc;margin:20px 0 6px;border-top:1px solid #ddd;padding-top:12px">';
+            html += d.day + ' &mdash; ' + d.total + ' hrs</h2>';
+            d.rows.forEach(function(r) {
+                html += '<div style="background:#f4f8ff;border:1px solid #c5d8f5;border-radius:8px;padding:10px 14px;margin:8px 0">';
+                html += '<table style="border-collapse:collapse;font-size:13px">';
+                html += '<tr><td style="color:#666;padding-right:12px;white-space:nowrap;vertical-align:top">Event</td><td><strong>' + (r.eventname||'—') + '</strong></td></tr>';
+                html += '<tr><td style="color:#666;padding-right:12px">Activity</td><td>' + (r.activity||'—') + '</td></tr>';
+                html += '<tr><td style="color:#666;padding-right:12px">Area</td><td>' + (r.area||'—') + '</td></tr>';
+                html += '<tr><td style="color:#666;padding-right:12px">Hours</td><td><strong>' + (r.hours||0).toFixed(2) + '</strong></td></tr>';
+                if (r.comments) html += '<tr><td style="color:#666;padding-right:12px">Notes</td><td>' + r.comments + '</td></tr>';
+                html += '</table></div>';
+            });
+            if (d.break1 || d.break2)
+                html += '<p style="font-size:12px;color:#555;margin:4px 0">Break 1: '+(d.break1||'—')+' hr &nbsp;|&nbsp; Break 2: '+(d.break2||'—')+' hr</p>';
+            if (d.notes)
+                html += '<p style="font-size:12px;color:#555;margin:4px 0">Safety Notes: '+d.notes+'</p>';
+            html += '<p style="font-weight:bold;color:#0066cc;text-align:right;font-size:13px;margin:4px 0">Daily Total: ' + d.total + ' hrs</p>';
+        });
+
+        html += '<p style="font-size:11px;color:#aaa;margin-top:24px;text-align:center">AREA15 Production Department &mdash; Submitted via Digital Sign-In</p>';
+        html += '</div>';
+        html += '<style>@media print { button { display:none } }</style>';
+
+        document.body.innerHTML = html;
+        document.title = 'AREA15 Sign-In — ' + data.employee;
+    })();
     // These two lists must exactly match Master's "Department Code Labor Distribution Options"
     // and "Areas" lists in the Excel workbook - if those ever change there, update them here too
     // so the CSV pastes in cleanly without mismatches.
@@ -946,6 +996,37 @@
                 msg += '<p style="font-size:12px;margin:0 0 4px 12px;color:#555">Safety Notes: ' + notesEl.value + '</p>';
         });
 
+        // ── Build print view URL ─────────────────────────────────────────────
+        // Encode the submission data into a URL parameter pointing back to this
+        // page. When you click the link in your email, the page detects the
+        // parameter and renders a clean printable summary instead of the form.
+        var printData = {
+            employee: employee,
+            weekStart: weekStart,
+            weekEnd: weekEnd,
+            weeklyTotal: weeklyTotal,
+            days: []
+        };
+        days.forEach(function(day) {
+            if (isDayOff(day)) return;
+            var dtotEl = document.getElementById(day + '-daily-total');
+            var dtot = dtotEl ? dtotEl.textContent : '0.00';
+            var b1El = document.getElementById(day + '-break1');
+            var b2El = document.getElementById(day + '-break2');
+            var notesEl = document.getElementById(day + '-notes');
+            printData.days.push({
+                day: day,
+                total: dtot,
+                rows: collectDayRows(day),
+                break1: b1El ? b1El.value : '',
+                break2: b2El ? b2El.value : '',
+                notes: notesEl ? notesEl.value : ''
+            });
+        });
+        var printParam = btoa(encodeURIComponent(JSON.stringify(printData)));
+        var pageUrl = window.location.href.split('?')[0];
+        var printUrl = pageUrl + '?print=' + printParam;
+
         // CSV paste block
         var csvLines = [];
         days.forEach(function(day) {
@@ -965,6 +1046,11 @@
             msg += '</pre>';
             msg += '<p style="font-size:11px;color:#888;margin:4px 0 0">(Department Code column is blank — fill in after pasting)</p>';
         }
+
+        msg += '<div style="margin:20px 0;border-top:2px solid #0066cc;padding-top:16px">';
+        msg += '<a href="' + printUrl + '" style="display:inline-block;padding:12px 24px;background:#0066cc;color:white;font-family:Arial,sans-serif;font-size:14px;font-weight:bold;text-decoration:none;border-radius:8px;">&#128438; Open Formatted Timesheet</a>';
+        msg += '<p style="font-family:Arial,sans-serif;font-size:11px;color:#888;margin:8px 0 0">Click to open a clean printable version in your browser &mdash; use Print / Save as PDF for hard copies.</p>';
+        msg += '</div>';
         msg += '</div>';
 
         var form = document.createElement('form');
