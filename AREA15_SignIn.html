@@ -161,7 +161,7 @@
         "Jeriel Askew":     "jerinova@gmail.com",
         "Nicholas Padilla": "nickpad19@gmail.com",
         "Ryan Miller":      "imryanmiller@gmail.com",
-        "Shaun Coleman":    "scoleman@area15.com"
+        "Shaun Coleman":    "shaun.w.coleman@gmail.com"
     };    var AREAS = ["Portal", "The Wall", "Asylum", "Sanctuary", "Oddyssey", "A Lot", "The Quarters",
                  "747 Plaza", "Spine", "Z2", "Campus", "175"];
 
@@ -746,61 +746,48 @@
         var employee  = document.getElementById('employee').value || 'Unnamed Employee';
         var weekStart = days[0];
         var weekEnd   = days[6];
+        var weeklyTotal = document.getElementById('weekly-total').textContent;
 
-        var htmlBody =
-            '<h2 style="font-family:Arial,sans-serif;color:#333">AREA15 Production Department Sign-In Sheet</h2>' +
-            '<p style="font-family:Arial,sans-serif;font-size:14px">' +
-                '<strong>Employee:</strong> ' + employee + '<br>' +
-                '<strong>Week of:</strong> ' + weekStart + ' &ndash; ' + weekEnd +
-            '</p><hr>';
+        // ── Build plain text message (FormSubmit renders this cleanly) ────────
+        var msg = '';
+        msg += 'AREA15 Production Department Sign-In Sheet\n';
+        msg += '==========================================\n';
+        msg += 'Employee : ' + employee + '\n';
+        msg += 'Week of  : ' + weekStart + ' - ' + weekEnd + '\n';
+        msg += 'Weekly Total: ' + weeklyTotal + ' hrs\n\n';
 
         days.forEach(function(day) {
             var isOff = isDayOff(day);
-            htmlBody += '<h3 style="font-family:Arial,sans-serif;color:#0066cc;margin:16px 0 6px">' + day + '</h3>';
-
-            if (isOff) {
-                htmlBody += '<p style="font-family:Arial,sans-serif;font-size:13px"><em>🌴 Day off — no hours recorded.</em></p>';
-                return;
-            }
-
             var dtotEl = document.getElementById(day + '-daily-total');
             var dtot   = dtotEl ? dtotEl.textContent : '0.00';
-            htmlBody += '<p style="font-family:Arial,sans-serif;font-size:13px"><strong>Daily Total Hours: ' + dtot + '</strong></p>';
-            htmlBody +=
-                '<table border="1" cellpadding="7" cellspacing="0" style="border-collapse:collapse;width:100%;font-family:Arial,sans-serif;font-size:12px">' +
-                '<tr style="background:#f0f0f0">' +
-                    '<th>Project/Event</th><th>Activity</th><th>Area</th><th>Hours</th><th>Additional Comments</th>' +
-                '</tr>';
+
+            msg += '------------------------------------------\n';
+            msg += day + '\n';
+            if (isOff) {
+                msg += '  Day off - no hours recorded.\n\n';
+                return;
+            }
+            msg += 'Daily Total: ' + dtot + ' hrs\n\n';
 
             collectDayRows(day).forEach(function(r) {
-                htmlBody +=
-                    '<tr>' +
-                        '<td>' + (r.eventname || '—') + '</td>' +
-                        '<td>' + (r.activity  || '—') + '</td>' +
-                        '<td>' + (r.area      || '—') + '</td>' +
-                        '<td><strong>' + r.hours.toFixed(2) + '</strong></td>' +
-                        '<td>' + (r.comments  || '—') + '</td>' +
-                    '</tr>';
+                msg += '  Project/Event : ' + (r.eventname || '—') + '\n';
+                msg += '  Activity      : ' + (r.activity  || '—') + '\n';
+                msg += '  Area          : ' + (r.area      || '—') + '\n';
+                msg += '  Hours         : ' + r.hours.toFixed(2) + '\n';
+                if (r.comments) msg += '  Comments      : ' + r.comments + '\n';
+                msg += '\n';
             });
-            htmlBody += '</table>';
 
             var b1El = document.getElementById(day + '-break1');
             var b2El = document.getElementById(day + '-break2');
-            var b1val = b1El && b1El.value ? b1El.value + ' hr(s)' : '—';
-            var b2val = b2El && b2El.value ? b2El.value + ' hr(s)' : '—';
-            htmlBody += '<p style="font-family:Arial,sans-serif;font-size:12px;margin-top:6px"><strong>Break 1:</strong> ' + b1val + ' &nbsp;|&nbsp; <strong>Break 2:</strong> ' + b2val + '</p>';
-
+            if (b1El && b1El.value) msg += '  Break 1: ' + b1El.value + ' hr(s)\n';
+            if (b2El && b2El.value) msg += '  Break 2: ' + b2El.value + ' hr(s)\n';
             var notesEl = document.getElementById(day + '-notes');
-            if (notesEl && notesEl.value.trim()) {
-                htmlBody += '<p style="font-family:Arial,sans-serif;font-size:12px;margin-top:6px"><strong>Notes:</strong> ' + notesEl.value + '</p>';
-            }
-            htmlBody += '<br>';
+            if (notesEl && notesEl.value.trim()) msg += '  Notes: ' + notesEl.value + '\n';
+            msg += '\n';
         });
 
-        var weeklyTotal = document.getElementById('weekly-total').textContent;
-        htmlBody += '<hr><p style="font-family:Arial,sans-serif;font-size:16px;font-weight:bold">Weekly Total: ' + weeklyTotal + ' hours</p>';
-
-        // ── CSV PASTE BLOCK (for Shaun to copy directly into Temp tab) ──────────
+        // ── CSV paste block ───────────────────────────────────────────────────
         var csvLines = [];
         days.forEach(function(day) {
             if (isDayOff(day)) return;
@@ -812,19 +799,12 @@
             });
         });
         if (csvLines.length > 0) {
-            htmlBody +=
-                '<hr>' +
-                '<p style="font-family:Arial,sans-serif;font-size:13px;font-weight:bold;color:#333;margin-bottom:4px">' +
-                    '&#128203; PASTE INTO TEMP TAB &mdash; copy the rows below and paste onto the bottom of the Temp tab in the workbook:' +
-                '</p>' +
-                '<pre style="font-family:monospace;font-size:12px;background:#f4f4f4;border:1px solid #ccc;' +
-                    'padding:10px;white-space:pre-wrap;line-height:1.6">' +
-                    'Name,Date,Hours,Department Code,Event/Project,Details,Area\n' +
-                    csvLines.join('\n') +
-                '</pre>' +
-                '<p style="font-family:Arial,sans-serif;font-size:11px;color:#888;margin-top:4px">' +
-                    'Department Code column is left blank &mdash; fill in after pasting.' +
-                '</p>';
+            msg += '==========================================\n';
+            msg += 'PASTE INTO TEMP TAB (copy rows below):\n';
+            msg += '==========================================\n';
+            msg += 'Name,Date,Hours,Department Code,Event/Project,Details,Area\n';
+            msg += csvLines.join('\n') + '\n';
+            msg += '(Department Code column is blank - fill in after pasting)\n';
         }
 
         var form = document.createElement('form');
@@ -837,8 +817,9 @@
             input.name = name; input.value = val;
             form.appendChild(input);
         }
-        addField('_subject', 'AREA15 Production Sign-In — ' + employee + ' — Week of ' + weekStart);
-        addField('html', htmlBody);
+        addField('_subject', 'AREA15 Sign-In — ' + employee + ' — Week of ' + weekStart);
+        addField('message', msg);
+        addField('_template', 'none');
         addField('_captcha', 'false');
 
         var employeeEmail = EMPLOYEE_EMAILS[employee];
