@@ -7,21 +7,21 @@
     <style>
         /* ── BASE (shared) ─────────────────────────────────────────── */
         * { box-sizing: border-box; }
-        body { font-family: Arial, sans-serif; margin: 0; background: #f4f4f4; color: #222; }
-        input, select, textarea { width: 100%; font-family: Arial, sans-serif; font-size: 15px; }
+        body { font-family: Arial, sans-serif; margin: 0; background: #000; color: #eee; }
+        input, select, textarea { width: 100%; font-family: Arial, sans-serif; font-size: 15px; color: #222; }
         button { cursor: pointer; border: none; font-family: Arial, sans-serif; }
         .error { border: 2px solid red !important; background: #ffe6e6; }
-        .day-off-banner { background: #fff3cd; color: #856404; padding: 12px;
+        .day-off-banner { background: #332b00; color: #ffc107; padding: 12px;
             text-align: center; font-weight: bold; border: 2px solid #ffc107; margin: 10px 0;
             border-radius: 6px; }
-        .weekly-total { font-weight: bold; text-align: center; background: #e6f0ff;
-            border: 3px solid #0066cc; border-radius: 8px; }
-        .instructions { background: #e6f0ff; border-radius: 8px; }
+        .weekly-total { font-weight: bold; text-align: center; background: #001a3a;
+            border: 3px solid #0066cc; border-radius: 8px; color: #eee; }
+        .instructions { background: #001a3a; border-radius: 8px; color: #cce0ff; }
 
         /* ── DESKTOP (≥ 700px) ────────────────────────────────────── */
         @media (min-width: 700px) {
-            body { margin: 20px; }
-            h1 { font-size: 1.6em; margin-bottom: 16px; }
+            body { margin: 20px; background: #000; }
+            h1 { font-size: 1.6em; margin-bottom: 16px; color: #fff; }
             .instructions { padding: 15px; margin-bottom: 20px; }
             .top-controls { margin-bottom: 16px; }
             button { padding: 10px 14px; margin: 5px; font-size: 14px; border-radius: 4px; }
@@ -29,17 +29,17 @@
             .save-btn  { background: #0066cc; color: white; }
             .load-btn  { background: #555;    color: white; }
             .day { border: 2px solid #0066cc; padding: 15px; margin-bottom: 25px;
-                background: white; border-radius: 8px; }
-            .day h2 { margin: 0 0 12px; font-size: 1.2em; color: #0066cc; }
+                background: #111; border-radius: 8px; color: #eee; }
+            .day h2 { margin: 0 0 12px; font-size: 1.2em; color: #4da6ff; }
             .day-controls { margin-top: 10px; }
             .day-off-btn  { background: #008800; color: white; }
             .delete-btn   { background: #cc0000; color: white; }
             .add-btn      { background: #0066cc; color: white; }
             /* desktop table */
             table { width: 100%; border-collapse: collapse; margin-bottom: 12px; }
-            th, td { border: 1px solid #ccc; padding: 8px; text-align: left; vertical-align: top; }
-            th { background: #333; color: white; font-size: 13px; }
-            td input, td select, td textarea { font-size: 14px; padding: 4px; }
+            th, td { border: 1px solid #333; padding: 8px; text-align: left; vertical-align: top; color: #eee; }
+            th { background: #0066cc; color: white; font-size: 13px; }
+            td input, td select, td textarea { font-size: 14px; padding: 4px; background: #222; color: #eee; border: 1px solid #444; }
             .mobile-card { display: none; }  /* hide mobile cards on desktop */
             .desktop-table { display: table; } /* show table on desktop */
             .weekly-total { font-size: 1.4em; margin: 30px 0; padding: 15px; }
@@ -51,44 +51,42 @@
 
         /* ── MOBILE (< 700px) ────────────────────────────────────── */
         @media (max-width: 699px) {
-            body { margin: 0; background: #f0f2f5; }
+            body { margin: 0; background: #000; }
             h1 { font-size: 1.2em; margin: 0; padding: 16px 16px 10px;
                 background: #0066cc; color: white; }
             .instructions { margin: 12px; padding: 12px; font-size: 13px; border-radius: 8px; }
             .top-controls { display: flex; flex-wrap: wrap; gap: 8px;
-                padding: 12px; background: white; border-bottom: 1px solid #ddd; }
+                padding: 12px; background: #111; border-bottom: 1px solid #333; }
             .top-controls select { font-size: 16px; padding: 10px; border: 2px solid #0066cc;
-                border-radius: 8px; background: white; flex: 1 1 100%; }
+                border-radius: 8px; background: #222; color: #eee; flex: 1 1 100%; }
             .top-controls .btn-row { display: flex; gap: 8px; width: 100%; }
             button { padding: 12px 10px; font-size: 14px; border-radius: 8px;
                 font-weight: bold; flex: 1; }
             .submit-btn { background: #28a745; color: white; font-size: 15px; padding: 14px; }
             .save-btn  { background: #0066cc; color: white; }
-            .load-btn  { background: #666;    color: white; }
+            .load-btn  { background: #555;    color: white; }
             .day-off-btn  { background: #008800; color: white; width: 100%; display: block;
                 margin-top: 8px; }
             .delete-btn   { background: #cc0000; color: white; }
             .add-btn      { background: #0066cc; color: white; width: 100%; display: block;
                 margin-top: 8px; }
-            .day { margin: 12px; background: white; border-radius: 12px;
-                box-shadow: 0 2px 8px rgba(0,0,0,0.1); overflow: hidden; }
+            .day { margin: 8px 12px; background: #111; border-radius: 12px;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.5); overflow: hidden;
+                border: 1.5px solid #1a3a5c; }
             .day h2 { margin: 0; padding: 14px 16px; background: #0066cc; color: white;
                 font-size: 1em; border-radius: 12px 12px 0 0; }
-            .day-inner { padding: 12px; background: #eef4ff; border-radius: 0 0 12px 12px; }
-            .day { margin: 8px 12px; background: white; border-radius: 12px;
-                box-shadow: 0 2px 8px rgba(0,0,0,0.1); overflow: hidden;
-                border: 1.5px solid #c5d8f5; }
+            .day-inner { padding: 12px; background: #0d1a2a; border-radius: 0 0 12px 12px; }
             /* mobile card per row */
             .desktop-table { display: none; } /* hide table on mobile */
-            .mobile-card { display: block; background: white; border: 1px solid #c5d8f5;
+            .mobile-card { display: block; background: #1a1a1a; border: 1px solid #1a3a5c;
                 border-radius: 10px; padding: 12px; margin-bottom: 10px; }
             .mobile-card .field-group { margin-bottom: 10px; }
             .mobile-card .field-label { font-size: 11px; font-weight: bold;
-                text-transform: uppercase; color: #666; margin-bottom: 3px; }
+                text-transform: uppercase; color: #888; margin-bottom: 3px; }
             .mobile-card select, .mobile-card input[type=text],
             .mobile-card input[type=number], .mobile-card textarea {
-                font-size: 16px; padding: 10px; border: 1.5px solid #ccc;
-                border-radius: 8px; background: white; }
+                font-size: 16px; padding: 10px; border: 1.5px solid #333;
+                border-radius: 8px; background: #222; color: #eee; }
             .mobile-card .hours-row { display: flex; gap: 10px; align-items: flex-start; }
             .mobile-card .hours-row .field-group { flex: 1; }
             .mobile-card .delete-row-btn { background: none; border: none;
@@ -97,19 +95,19 @@
             .mobile-card input[type=text].activity-other { margin-top: 6px; }
             .weekly-total { font-size: 1.2em; margin: 16px 12px; padding: 14px; }
             .notes-row { margin-top: 10px; }
-            .notes-row label { font-size: 12px; font-weight: bold; color: #555;
+            .notes-row label { font-size: 12px; font-weight: bold; color: #888;
                 text-transform: uppercase; display: block; margin-bottom: 4px; }
-            .notes-row textarea { font-size: 15px; padding: 10px; border: 1.5px solid #ccc;
-                border-radius: 8px; }
-            .break-row { display: flex; gap: 12px; margin-top: 10px; font-size: 13px; }
+            .notes-row textarea { font-size: 15px; padding: 10px; border: 1.5px solid #333;
+                border-radius: 8px; background: #222; color: #eee; }
+            .break-row { display: flex; gap: 12px; margin-top: 10px; font-size: 13px; color: #aaa; }
             .break-row .break-field { flex: 1; }
             .break-row label { display: block; font-size: 11px; font-weight: bold;
-                text-transform: uppercase; color: #666; margin-bottom: 3px; }
-            .break-row input { font-size: 16px; padding: 8px; border: 1.5px solid #ccc;
-                border-radius: 8px; text-align: center; }
+                text-transform: uppercase; color: #888; margin-bottom: 3px; }
+            .break-row input { font-size: 16px; padding: 8px; border: 1.5px solid #333;
+                border-radius: 8px; text-align: center; background: #222; color: #eee; }
             .daily-total-row { text-align: right; font-weight: bold; font-size: 14px;
-                color: #0066cc; margin-top: 8px; padding-top: 8px;
-                border-top: 1px solid #c5d8f5; }
+                color: #4da6ff; margin-top: 8px; padding-top: 8px;
+                border-top: 1px solid #1a3a5c; }
             /* button layout: Add Row + Mark as Day Off side by side, Delete below */
             .day-controls { padding: 0; display: flex; flex-direction: column;
                 margin-top: 10px; gap: 8px; }
@@ -123,7 +121,7 @@
 </head>
 <body>
     <h1>AREA15 Production Department Sign-In Sheet</h1>
-    <p style="text-align:right;font-size:11px;color:#aaa;margin:0 12px 8px;">v1.8</p>
+    <p style="text-align:right;font-size:11px;color:#555;margin:0 12px 8px;">v1.9</p>
 
     <div class="instructions">
         <strong>How to use:</strong><br>
