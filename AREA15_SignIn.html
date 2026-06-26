@@ -5,21 +5,110 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AREA15 PROD DEPT Digital Sign-In</title>
     <style>
-        body { font-family: Arial, sans-serif; margin: 20px; background: #f4f4f4; }
-        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-        th, td { border: 1px solid #ccc; padding: 8px; text-align: left; vertical-align: top; }
-        th { background: #333; color: white; }
-        input, select, textarea { width: 100%; box-sizing: border-box; }
-        button { padding: 10px; margin: 5px; background: #0066cc; color: white; border: none; cursor: pointer; }
-        .delete-btn { background: #cc0000; }
-        .day-off-btn { background: #008800; }
-        .submit-btn { background: #28a745; font-weight: bold; }
-        .day { border: 2px solid #0066cc; padding: 15px; margin-bottom: 25px; background: white; border-radius: 8px; }
-        .day-controls { margin-top: 10px; }
-        .day-off-banner { background: #fff3cd; color: #856404; padding: 12px; text-align: center; font-weight: bold; border: 2px solid #ffc107; margin: 10px 0; }
+        /* ── BASE (shared) ─────────────────────────────────────────── */
+        * { box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; margin: 0; background: #f4f4f4; color: #222; }
+        input, select, textarea { width: 100%; font-family: Arial, sans-serif; font-size: 15px; }
+        button { cursor: pointer; border: none; font-family: Arial, sans-serif; }
         .error { border: 2px solid red !important; background: #ffe6e6; }
-        .weekly-total { font-size: 1.4em; font-weight: bold; text-align: center; margin: 30px 0; padding: 15px; background: #e6f0ff; border: 3px solid #0066cc; border-radius: 8px; }
-        .instructions { background: #e6f0ff; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
+        .day-off-banner { background: #fff3cd; color: #856404; padding: 12px;
+            text-align: center; font-weight: bold; border: 2px solid #ffc107; margin: 10px 0;
+            border-radius: 6px; }
+        .weekly-total { font-weight: bold; text-align: center; background: #e6f0ff;
+            border: 3px solid #0066cc; border-radius: 8px; }
+        .instructions { background: #e6f0ff; border-radius: 8px; }
+
+        /* ── DESKTOP (≥ 700px) ────────────────────────────────────── */
+        @media (min-width: 700px) {
+            body { margin: 20px; }
+            h1 { font-size: 1.6em; margin-bottom: 16px; }
+            .instructions { padding: 15px; margin-bottom: 20px; }
+            .top-controls { margin-bottom: 16px; }
+            button { padding: 10px 14px; margin: 5px; font-size: 14px; border-radius: 4px; }
+            .submit-btn { background: #28a745; color: white; font-weight: bold; }
+            .save-btn  { background: #0066cc; color: white; }
+            .load-btn  { background: #555;    color: white; }
+            .day { border: 2px solid #0066cc; padding: 15px; margin-bottom: 25px;
+                background: white; border-radius: 8px; }
+            .day h2 { margin: 0 0 12px; font-size: 1.2em; color: #0066cc; }
+            .day-controls { margin-top: 10px; }
+            .day-off-btn  { background: #008800; color: white; }
+            .delete-btn   { background: #cc0000; color: white; }
+            .add-btn      { background: #0066cc; color: white; }
+            /* desktop table */
+            table { width: 100%; border-collapse: collapse; margin-bottom: 12px; }
+            th, td { border: 1px solid #ccc; padding: 8px; text-align: left; vertical-align: top; }
+            th { background: #333; color: white; font-size: 13px; }
+            td input, td select, td textarea { font-size: 14px; padding: 4px; }
+            .mobile-card { display: none; }  /* hide mobile cards on desktop */
+            .desktop-table { display: table; } /* show table on desktop */
+            .weekly-total { font-size: 1.4em; margin: 30px 0; padding: 15px; }
+            .notes-row { margin-top: 8px; }
+            .notes-row label { font-weight: bold; font-size: 13px; }
+            .break-row { font-size: 13px; margin-top: 6px; }
+            .break-row input { width: 70px; display: inline; }
+        }
+
+        /* ── MOBILE (< 700px) ────────────────────────────────────── */
+        @media (max-width: 699px) {
+            body { margin: 0; background: #f0f2f5; }
+            h1 { font-size: 1.2em; margin: 0; padding: 16px 16px 10px;
+                background: #0066cc; color: white; }
+            .instructions { margin: 12px; padding: 12px; font-size: 13px; border-radius: 8px; }
+            .top-controls { display: flex; flex-wrap: wrap; gap: 8px;
+                padding: 12px; background: white; border-bottom: 1px solid #ddd; }
+            .top-controls select { font-size: 16px; padding: 10px; border: 2px solid #0066cc;
+                border-radius: 8px; background: white; flex: 1 1 100%; }
+            .top-controls .btn-row { display: flex; gap: 8px; width: 100%; }
+            button { padding: 12px 10px; font-size: 14px; border-radius: 8px;
+                font-weight: bold; flex: 1; }
+            .submit-btn { background: #28a745; color: white; font-size: 15px; padding: 14px; }
+            .save-btn  { background: #0066cc; color: white; }
+            .load-btn  { background: #666;    color: white; }
+            .day-off-btn  { background: #008800; color: white; width: 100%; display: block;
+                margin-top: 8px; }
+            .delete-btn   { background: #cc0000; color: white; }
+            .add-btn      { background: #0066cc; color: white; width: 100%; display: block;
+                margin-top: 8px; }
+            .day { margin: 12px; background: white; border-radius: 12px;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.1); overflow: hidden; }
+            .day h2 { margin: 0; padding: 14px 16px; background: #0066cc; color: white;
+                font-size: 1em; }
+            .day-inner { padding: 12px; }
+            .day-controls { padding: 0; }
+            /* mobile card per row */
+            .desktop-table { display: none; } /* hide table on mobile */
+            .mobile-card { display: block; background: #f8f9fa; border: 1px solid #ddd;
+                border-radius: 10px; padding: 12px; margin-bottom: 10px; }
+            .mobile-card .field-group { margin-bottom: 10px; }
+            .mobile-card .field-label { font-size: 11px; font-weight: bold;
+                text-transform: uppercase; color: #666; margin-bottom: 3px; }
+            .mobile-card select, .mobile-card input[type=text],
+            .mobile-card input[type=number], .mobile-card textarea {
+                font-size: 16px; padding: 10px; border: 1.5px solid #ccc;
+                border-radius: 8px; background: white; }
+            .mobile-card .hours-row { display: flex; gap: 10px; align-items: flex-start; }
+            .mobile-card .hours-row .field-group { flex: 1; }
+            .mobile-card .delete-row-btn { background: none; border: none;
+                color: #cc0000; font-size: 13px; padding: 4px 0; margin-top: 4px; cursor: pointer; }
+            .mobile-card input[type=text].eventname-other,
+            .mobile-card input[type=text].activity-other { margin-top: 6px; }
+            .weekly-total { font-size: 1.2em; margin: 16px 12px; padding: 14px; }
+            .notes-row { margin-top: 10px; }
+            .notes-row label { font-size: 12px; font-weight: bold; color: #555;
+                text-transform: uppercase; display: block; margin-bottom: 4px; }
+            .notes-row textarea { font-size: 15px; padding: 10px; border: 1.5px solid #ccc;
+                border-radius: 8px; }
+            .break-row { display: flex; gap: 12px; margin-top: 10px; font-size: 13px; }
+            .break-row .break-field { flex: 1; }
+            .break-row label { display: block; font-size: 11px; font-weight: bold;
+                text-transform: uppercase; color: #666; margin-bottom: 3px; }
+            .break-row input { font-size: 16px; padding: 8px; border: 1.5px solid #ccc;
+                border-radius: 8px; text-align: center; }
+            .daily-total-row { text-align: right; font-weight: bold; font-size: 14px;
+                color: #0066cc; margin-top: 8px; padding-top: 8px;
+                border-top: 1px solid #eee; }
+        }
     </style>
 </head>
 <body>
@@ -28,26 +117,26 @@
     <div class="instructions">
         <strong>How to use:</strong><br>
         &bull; Fill out at the end of each shift<br>
-        &bull; Click <strong>&#128190; Save Progress</strong> before closing &mdash; your entries are saved on this device and will still be here when you come back<br>
-        &bull; Return later &rarr; click <strong>&#128194; Load Saved</strong> to pick up where you left off<br>
-        &bull; When your week is complete &rarr; click <strong>&#10003; Validate &amp; Send</strong> to submit your timesheet &mdash; a copy will automatically be sent to your email for your records
+        &bull; Tap <strong>Save Progress</strong> before closing &mdash; your entries are saved on this device<br>
+        &bull; Return later &rarr; tap <strong>Load Saved</strong> to pick up where you left off<br>
+        &bull; When your week is complete &rarr; tap <strong>&#10003; Submit</strong> &mdash; a copy will automatically be sent to your email
     </div>
 
-    <div>
-        <label>Employee Name:
-            <select id="employee" style="width:220px;display:inline">
-                <option value="">-- Select --</option>
-                <option>Brandon Fonville</option>
-                <option>Chase Ballard</option>
-                <option>Cody Yeager</option>
-                <option>Jeriel Askew</option>
-                <option>Nicholas Padilla</option>
-                <option>Ryan Miller</option>
-            </select>
-        </label><br><br>
-        <button onclick="saveData()">&#128190; Save Progress</button>
-        <button onclick="loadData()">&#128194; Load Saved</button>
-        <button class="submit-btn" onclick="validateAndSend()">&#10003; Validate &amp; Send</button>
+    <div class="top-controls">
+        <select id="employee">
+            <option value="">-- Select your name --</option>
+            <option>Brandon Fonville</option>
+            <option>Chase Ballard</option>
+            <option>Cody Yeager</option>
+            <option>Jeriel Askew</option>
+            <option>Nicholas Padilla</option>
+            <option>Ryan Miller</option>
+        </select>
+        <div class="btn-row">
+            <button class="save-btn" onclick="saveData()">&#128190; Save</button>
+            <button class="load-btn" onclick="loadData()">&#128194; Load</button>
+            <button class="submit-btn" onclick="validateAndSend()">&#10003; Submit</button>
+        </div>
     </div>
 
     <br>
@@ -169,27 +258,33 @@
         div.id = 'day-' + day;
         div.innerHTML =
             '<h2>' + day + '</h2>' +
-            '<div class="day-off-banner" id="' + day + '-off-banner" style="display:none;">&#127796; DAY OFF - No hours recorded</div>' +
-            '<table>' +
-                '<thead><tr>' +
-                    '<th>Project/Event</th><th>Activity</th><th>Area</th>' +
-                    '<th>Total Hours</th><th>Additional Comments</th>' +
-                '</tr></thead>' +
-                '<tbody id="' + day + '-rows"></tbody>' +
-            '</table>' +
-            '<div class="day-controls">' +
-                '<button id="' + day + '-add-btn" onclick="addRow(\'' + day + '\')">+ Add Row</button>' +
-                '<button id="' + day + '-delete-btn" class="delete-btn" onclick="deleteLastRow(\'' + day + '\')" style="display:none">Delete Last Row</button>' +
-                '<button class="day-off-btn" id="' + day + '-off-btn" onclick="toggleDayOff(\'' + day + '\', this)">Mark as Day Off</button>' +
-            '</div>' +
-            '<p><strong>Daily Notes / Safety:</strong> <textarea id="' + day + '-notes" rows="3" style="width:100%"></textarea></p>' +
-            '<p>' +
-                '<strong>Break 1 (hrs):</strong> ' +
-                '<input type="number" id="' + day + '-break1" min="0" step="0.25" placeholder="0.00" style="width:80px;display:inline"> &nbsp;&nbsp;' +
-                '<strong>Break 2 (hrs):</strong> ' +
-                '<input type="number" id="' + day + '-break2" min="0" step="0.25" placeholder="0.00" style="width:80px;display:inline">' +
-            '</p>' +
-            '<p><strong>Total Daily Hours:</strong> <span id="' + day + '-daily-total">0.00</span></p>';
+            '<div class="day-inner">' +
+                '<div class="day-off-banner" id="' + day + '-off-banner" style="display:none;">&#127796; DAY OFF - No hours recorded</div>' +
+                // Desktop: table with header
+                '<table class="desktop-table">' +
+                    '<thead><tr>' +
+                        '<th>Project/Event</th><th>Activity</th><th>Area</th>' +
+                        '<th>Total Hours</th><th>Additional Comments</th>' +
+                    '</tr></thead>' +
+                    '<tbody id="' + day + '-rows"></tbody>' +
+                '</table>' +
+                // Mobile: card container
+                '<div class="mobile-cards" id="' + day + '-cards"></div>' +
+                '<div class="day-controls">' +
+                    '<button class="add-btn" id="' + day + '-add-btn" onclick="addRow(\'' + day + '\')">+ Add Row</button>' +
+                    '<button class="delete-btn" id="' + day + '-delete-btn" onclick="deleteLastRow(\'' + day + '\')" style="display:none">Delete Last Row</button>' +
+                    '<button class="day-off-btn" id="' + day + '-off-btn" onclick="toggleDayOff(\'' + day + '\', this)">Mark as Day Off</button>' +
+                '</div>' +
+                '<div class="notes-row">' +
+                    '<label for="' + day + '-notes">Daily Notes / Safety:</label>' +
+                    '<textarea id="' + day + '-notes" rows="3"></textarea>' +
+                '</div>' +
+                '<div class="break-row">' +
+                    '<div class="break-field"><label>Break 1 (hrs)</label><input type="number" id="' + day + '-break1" min="0" step="0.25" placeholder="0.00"></div>' +
+                    '<div class="break-field"><label>Break 2 (hrs)</label><input type="number" id="' + day + '-break2" min="0" step="0.25" placeholder="0.00"></div>' +
+                '</div>' +
+                '<div class="daily-total-row">Daily Total: <span id="' + day + '-daily-total">0.00</span> hrs</div>' +
+            '</div>';
         document.getElementById('days').appendChild(div);
         addRow(day);
     }
@@ -197,6 +292,7 @@
     function toggleDayOff(day, btn) {
         var banner = document.getElementById(day + '-off-banner');
         var tbody  = document.getElementById(day + '-rows');
+        var cards  = document.getElementById(day + '-cards');
         var notes  = document.getElementById(day + '-notes');
         var totalEl = document.getElementById(day + '-daily-total');
         var addBtn  = document.getElementById(day + '-add-btn');
@@ -207,13 +303,14 @@
             banner.style.display = 'none';
             btn.textContent = 'Mark as Day Off';
             btn.style.backgroundColor = '#008800';
-            if (addBtn) addBtn.style.display = 'inline-block';
+            if (addBtn) addBtn.style.display = 'block';
             addRow(day);
         } else {
             banner.style.display = 'block';
             btn.textContent = 'Remove Day Off';
             btn.style.backgroundColor = '#cc8800';
             tbody.innerHTML = '';
+            if (cards) cards.innerHTML = '';
             if (notes) notes.value = '';
             if (totalEl) totalEl.textContent = '0.00';
             if (addBtn) addBtn.style.display = 'none';
@@ -253,33 +350,89 @@
 
     function addRow(day) {
         var tbody = document.getElementById(day + '-rows');
-        var row = document.createElement('tr');
-        row.innerHTML =
+        var cards = document.getElementById(day + '-cards');
+        var idx = tbody.rows.length + 1;
+
+        // ── Desktop table row ──
+        var tr = document.createElement('tr');
+        tr.setAttribute('data-row', idx);
+        tr.innerHTML =
             '<td><select class="eventname" onchange="toggleOtherEvent(this)">' + eventOptions() + '</select>' +
                 '<input type="text" class="eventname-other" placeholder="Type event/project name" style="display:none;margin-top:4px"></td>' +
             '<td><select class="activity" onchange="toggleOtherActivity(this)">' + activityOptions() + '</select>' +
                 '<input type="text" class="activity-other" placeholder="Type activity" style="display:none;margin-top:4px"></td>' +
             '<td><select class="area">' + areaOptions() + '</select></td>' +
-            '<td><input type="number" class="row-total" min="0" step="0.25" placeholder="0.00" oninput="updateDailyFromRow(this)"></td>' +
+            '<td><input type="number" class="row-total" min="0" step="0.25" placeholder="0.00" oninput="syncFromDesktop(this)"></td>' +
             '<td><textarea rows="2" class="comments" placeholder="Notes / safety comments..."></textarea></td>';
-        tbody.appendChild(row);
+        tbody.appendChild(tr);
+
+        // ── Mobile card ──
+        var card = document.createElement('div');
+        card.className = 'mobile-card';
+        card.setAttribute('data-row', idx);
+        card.innerHTML =
+            '<div class="field-group">' +
+                '<div class="field-label">Project / Event</div>' +
+                '<select class="eventname" onchange="toggleOtherEvent(this)">' + eventOptions() + '</select>' +
+                '<input type="text" class="eventname-other" placeholder="Type event/project name" style="display:none;margin-top:6px">' +
+            '</div>' +
+            '<div class="field-group">' +
+                '<div class="field-label">Activity</div>' +
+                '<select class="activity" onchange="toggleOtherActivity(this)">' + activityOptions() + '</select>' +
+                '<input type="text" class="activity-other" placeholder="Type activity" style="display:none;margin-top:6px">' +
+            '</div>' +
+            '<div class="hours-row">' +
+                '<div class="field-group">' +
+                    '<div class="field-label">Area</div>' +
+                    '<select class="area">' + areaOptions() + '</select>' +
+                '</div>' +
+                '<div class="field-group">' +
+                    '<div class="field-label">Total Hours</div>' +
+                    '<input type="number" class="row-total" min="0" step="0.25" placeholder="0.00" oninput="syncFromMobile(this)">' +
+                '</div>' +
+            '</div>' +
+            '<div class="field-group">' +
+                '<div class="field-label">Additional Comments</div>' +
+                '<textarea class="comments" rows="2" placeholder="Notes / safety comments..."></textarea>' +
+            '</div>';
+        cards.appendChild(card);
+
         updateDeleteButton(day);
         updateWeeklyTotal();
+    }
+
+    function syncFromDesktop(input) {
+        // When user edits hours in the desktop table row, sync to the matching mobile card
+        var tr = input.closest('tr');
+        var idx = tr.getAttribute('data-row');
+        var day = tr.closest('.day').id.replace('day-','');
+        var card = document.querySelector('#' + CSS.escape('day-' + day) + ' .mobile-card[data-row="' + idx + '"]');
+        if (card) { var mc = card.querySelector('.row-total'); if (mc) mc.value = input.value; }
+        updateDailyFromRow(input);
+    }
+    function syncFromMobile(input) {
+        // When user edits hours in the mobile card, sync to the matching desktop table row
+        var card = input.closest('.mobile-card');
+        var idx = card.getAttribute('data-row');
+        var day = card.closest('.day').id.replace('day-','');
+        var tr = document.querySelector('#' + CSS.escape('day-' + day) + '-rows tr[data-row="' + idx + '"]');
+        if (tr) { var dt = tr.querySelector('.row-total'); if (dt) dt.value = input.value; }
+        updateDailyFromRow(input);
     }
 
     function updateDeleteButton(day) {
         var tbody = document.getElementById(day + '-rows');
         var delBtn = document.getElementById(day + '-delete-btn');
-        if (delBtn) {
-            delBtn.style.display = (tbody.rows.length > 1) ? 'inline-block' : 'none';
-        }
+        if (delBtn) delBtn.style.display = (tbody.rows.length > 1) ? 'inline-block' : 'none';
     }
 
     function deleteLastRow(day) {
         var tbody = document.getElementById(day + '-rows');
+        var cards = document.getElementById(day + '-cards');
         if (tbody.rows.length <= 1) return;
         if (confirm('Delete the last row?')) {
             tbody.deleteRow(-1);
+            if (cards && cards.lastChild) cards.removeChild(cards.lastChild);
             var dayDiv = document.getElementById('day-' + day);
             updateDailyTotal(dayDiv);
             updateWeeklyTotal();
@@ -295,7 +448,8 @@
 
     function updateDailyTotal(dayDiv) {
         var total = 0;
-        dayDiv.querySelectorAll('.row-total').forEach(function(inp) {
+        // Only count from the desktop tbody rows to avoid double-counting (desktop+mobile)
+        dayDiv.querySelectorAll('tbody .row-total').forEach(function(inp) {
             total += parseFloat(inp.value) || 0;
         });
         var el = dayDiv.querySelector('[id$="-daily-total"]');
@@ -354,6 +508,7 @@
             if (!dayData) return;
 
             var tbody   = document.getElementById(day + '-rows');
+            var cards   = document.getElementById(day + '-cards');
             var addBtn  = document.getElementById(day + '-add-btn');
             var delBtn  = document.getElementById(day + '-delete-btn');
             var offBtn  = document.getElementById(day + '-off-btn');
@@ -361,6 +516,7 @@
             var notesEl = document.getElementById(day + '-notes');
 
             tbody.innerHTML = '';
+            if (cards) cards.innerHTML = '';
 
             if (dayData.isOff) {
                 banner.style.display = 'block';
@@ -369,13 +525,17 @@
                 if (offBtn) { offBtn.textContent = 'Remove Day Off'; offBtn.style.backgroundColor = '#cc8800'; }
             } else {
                 banner.style.display = 'none';
-                if (addBtn) addBtn.style.display = 'inline-block';
+                if (addBtn) addBtn.style.display = 'block';
                 if (offBtn) { offBtn.textContent = 'Mark as Day Off'; offBtn.style.backgroundColor = '#008800'; }
 
-                (dayData.rows || []).forEach(function(r) {
+                (dayData.rows || []).forEach(function(r, idx) {
+                    var rowIdx = idx + 1;
+                    var isOtherEvent    = r.eventname && EVENT_NAMES_THIS_WINDOW.indexOf(r.eventname) === -1;
+                    var isOtherActivity = r.activity  && ACTIVITIES.indexOf(r.activity) === -1;
+
+                    // Desktop row
                     var tr = document.createElement('tr');
-                    var isOtherEvent = r.eventname && EVENT_NAMES_THIS_WINDOW.indexOf(r.eventname) === -1;
-                    var isOtherActivity = r.activity && ACTIVITIES.indexOf(r.activity) === -1;
+                    tr.setAttribute('data-row', rowIdx);
                     tr.innerHTML =
                         '<td><select class="eventname" onchange="toggleOtherEvent(this)">' + eventOptions(r.eventname) + '</select>' +
                             '<input type="text" class="eventname-other" value="' + esc(isOtherEvent ? r.eventname : '') +
@@ -384,9 +544,37 @@
                             '<input type="text" class="activity-other" value="' + esc(isOtherActivity ? r.activity : '') +
                             '" placeholder="Type activity" style="display:' + (isOtherActivity ? 'block' : 'none') + ';margin-top:4px"></td>' +
                         '<td><select class="area">' + areaOptions(r.area) + '</select></td>' +
-                        '<td><input type="number" class="row-total" min="0" step="0.25" value="' + (r.hours||'') + '" placeholder="0.00" oninput="updateDailyFromRow(this)"></td>' +
+                        '<td><input type="number" class="row-total" min="0" step="0.25" value="' + (r.hours||'') + '" placeholder="0.00" oninput="syncFromDesktop(this)"></td>' +
                         '<td><textarea rows="2" class="comments">' + esc(r.comments) + '</textarea></td>';
                     tbody.appendChild(tr);
+
+                    // Mobile card
+                    var card = document.createElement('div');
+                    card.className = 'mobile-card';
+                    card.setAttribute('data-row', rowIdx);
+                    card.innerHTML =
+                        '<div class="field-group">' +
+                            '<div class="field-label">Project / Event</div>' +
+                            '<select class="eventname" onchange="toggleOtherEvent(this)">' + eventOptions(r.eventname) + '</select>' +
+                            '<input type="text" class="eventname-other" value="' + esc(isOtherEvent ? r.eventname : '') +
+                            '" placeholder="Type event/project name" style="display:' + (isOtherEvent ? 'block' : 'none') + ';margin-top:6px">' +
+                        '</div>' +
+                        '<div class="field-group">' +
+                            '<div class="field-label">Activity</div>' +
+                            '<select class="activity" onchange="toggleOtherActivity(this)">' + activityOptions(r.activity) + '</select>' +
+                            '<input type="text" class="activity-other" value="' + esc(isOtherActivity ? r.activity : '') +
+                            '" placeholder="Type activity" style="display:' + (isOtherActivity ? 'block' : 'none') + ';margin-top:6px">' +
+                        '</div>' +
+                        '<div class="hours-row">' +
+                            '<div class="field-group"><div class="field-label">Area</div>' +
+                                '<select class="area">' + areaOptions(r.area) + '</select></div>' +
+                            '<div class="field-group"><div class="field-label">Total Hours</div>' +
+                                '<input type="number" class="row-total" min="0" step="0.25" value="' + (r.hours||'') +
+                                '" placeholder="0.00" oninput="syncFromMobile(this)"></div>' +
+                        '</div>' +
+                        '<div class="field-group"><div class="field-label">Additional Comments</div>' +
+                            '<textarea class="comments" rows="2">' + esc(r.comments) + '</textarea></div>';
+                    if (cards) cards.appendChild(card);
                 });
                 if (!dayData.rows || dayData.rows.length === 0) addRow(day);
             }
