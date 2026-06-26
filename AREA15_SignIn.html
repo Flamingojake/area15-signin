@@ -10,7 +10,7 @@
         body { font-family: Arial, sans-serif; margin: 0; background: #000; color: #eee; }
         input, select, textarea { width: 100%; font-family: Arial, sans-serif; font-size: 15px; color: #222; }
         button { cursor: pointer; border: none; font-family: Arial, sans-serif; }
-        .error { border: 2px solid red !important; background: #ffe6e6; }
+        .error { border: 2px solid #ff4444 !important; background: #3a0000 !important; color: #ffaaaa !important; }
         .day-off-banner { background: #332b00; color: #ffc107; padding: 12px;
             text-align: center; font-weight: bold; border: 2px solid #ffc107; margin: 10px 0;
             border-radius: 6px; }
@@ -121,7 +121,7 @@
 </head>
 <body>
     <h1>AREA15 Production Department Sign-In Sheet</h1>
-    <p style="text-align:right;font-size:11px;color:#555;margin:0 12px 8px;">v1.9</p>
+    <p style="text-align:right;font-size:11px;color:#555;margin:0 12px 8px;">v2.0</p>
 
     <div class="instructions">
         <strong>How to use:</strong><br>
@@ -818,24 +818,53 @@
         days.forEach(function(day) {
             if (isDayOff(day)) return;
             document.getElementById(day + '-rows').querySelectorAll('tr').forEach(function(tr) {
+                var idx = tr.getAttribute('data-row');
+                var card = document.querySelector('#' + CSS.escape(day + '-cards') + ' .mobile-card[data-row="' + idx + '"]');
+
                 var en = tr.querySelector('.eventname');
                 var enOther = tr.querySelector('.eventname-other');
                 var ac = tr.querySelector('.activity');
                 var acOther = tr.querySelector('.activity-other');
                 var ar = tr.querySelector('.area');
                 var h  = tr.querySelector('.row-total');
+
+                // Mirror helpers — mark both desktop row AND mobile card field
+                function markError(cls, useOther) {
+                    tr.querySelector('.' + cls).classList.add('error');
+                    if (card) {
+                        var mf = card.querySelector('.' + cls);
+                        if (mf) mf.classList.add('error');
+                    }
+                    if (useOther) {
+                        tr.querySelector('.' + cls + '-other').classList.add('error');
+                        if (card) {
+                            var mo = card.querySelector('.' + cls + '-other');
+                            if (mo) mo.classList.add('error');
+                        }
+                    }
+                    isValid = false;
+                }
+
                 if (!en.value) {
-                    en.classList.add('error'); isValid = false;
+                    markError('eventname', false);
                 } else if (en.value === '__other__' && !enOther.value.trim()) {
-                    enOther.classList.add('error'); isValid = false;
+                    markError('eventname', true);
                 }
                 if (!ac.value) {
-                    ac.classList.add('error'); isValid = false;
+                    markError('activity', false);
                 } else if (ac.value === '__other__' && !acOther.value.trim()) {
-                    acOther.classList.add('error'); isValid = false;
+                    markError('activity', true);
                 }
-                if (!ar.value) { ar.classList.add('error'); isValid = false; }
-                if (!h.value || parseFloat(h.value) <= 0) { h.classList.add('error'); isValid = false; }
+                if (!ar.value) {
+                    tr.querySelector('.area').classList.add('error');
+                    if (card) { var ma = card.querySelector('.area'); if (ma) ma.classList.add('error'); }
+                    isValid = false;
+                }
+                if (!h.value || parseFloat(h.value) <= 0) {
+                    h.classList.add('error');
+                    if (card) { var mh = card.querySelector('.row-total'); if (mh) mh.classList.add('error'); }
+                    isValid = false;
+                }
             });
         });
 
