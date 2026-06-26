@@ -120,7 +120,7 @@
 </head>
 <body>
     <h1>AREA15 Production Department Sign-In Sheet</h1>
-    <p style="text-align:right;font-size:11px;color:#aaa;margin:0 12px 8px;">v1.3</p>
+    <p style="text-align:right;font-size:11px;color:#aaa;margin:0 12px 8px;">v1.4</p>
 
     <div class="instructions">
         <strong>How to use:</strong><br>
@@ -818,6 +818,84 @@
 
     function confirmSubmit() {
         document.getElementById('confirm-modal').style.display = 'none';
+
+        // Build the readable summary page and open it in a new tab
+        var employee  = document.getElementById('employee').value || 'Unnamed Employee';
+        var weekStart = days[0];
+        var weekEnd   = days[6];
+        var weeklyTotal = document.getElementById('weekly-total').textContent;
+
+        var page = '<!DOCTYPE html><html><head><meta charset="UTF-8">';
+        page += '<title>AREA15 Sign-In — ' + employee + '</title>';
+        page += '<style>body{font-family:Arial,sans-serif;max-width:640px;margin:30px auto;padding:0 20px;color:#222}';
+        page += 'h1{font-size:1.3em;color:#0066cc;border-bottom:2px solid #0066cc;padding-bottom:8px}';
+        page += 'h2{font-size:1em;color:#0066cc;margin:20px 0 6px;border-top:1px solid #ddd;padding-top:12px}';
+        page += '.meta{font-size:14px;margin:4px 0;color:#444}';
+        page += '.entry{background:#f4f8ff;border:1px solid #c5d8f5;border-radius:8px;padding:10px 14px;margin:8px 0}';
+        page += '.entry td{padding:2px 12px 2px 0;font-size:13px;vertical-align:top}';
+        page += '.entry td:first-child{color:#666;white-space:nowrap;width:90px}';
+        page += '.total{font-weight:bold;color:#0066cc;text-align:right;font-size:13px;margin:4px 0 0}';
+        page += '.csv-box{background:#f4f4f4;border:1px solid #ccc;border-radius:6px;padding:12px;';
+        page += 'font-family:Courier New,monospace;font-size:11px;line-height:1.8;white-space:pre;';
+        page += 'overflow-x:auto;margin-top:8px}';
+        page += '.csv-section{margin-top:24px;border-top:2px solid #333;padding-top:12px}';
+        page += '.csv-section h2{color:#333;border:none;margin-bottom:6px}';
+        page += 'p.note{font-size:11px;color:#888;margin:4px 0 0}';
+        page += '@media print{button{display:none}}';
+        page += '</style></head><body>';
+        page += '<h1>AREA15 Production Department Sign-In</h1>';
+        page += '<p class="meta"><strong>Employee:</strong> ' + employee + '</p>';
+        page += '<p class="meta"><strong>Week of:</strong> ' + weekStart + ' to ' + weekEnd + '</p>';
+        page += '<p class="meta"><strong>Weekly Total:</strong> ' + weeklyTotal + ' hrs</p>';
+        page += '<p style="margin-top:16px"><button onclick="window.print()" style="padding:8px 16px;background:#0066cc;color:white;border:none;border-radius:6px;cursor:pointer;font-size:13px">🖨 Print / Save as PDF</button></p>';
+
+        days.forEach(function(day) {
+            if (isDayOff(day)) return;
+            var dtotEl = document.getElementById(day + '-daily-total');
+            var dtot = dtotEl ? dtotEl.textContent : '0.00';
+            page += '<h2>' + day + '</h2>';
+            collectDayRows(day).forEach(function(r) {
+                page += '<div class="entry"><table>';
+                page += '<tr><td>Event</td><td><strong>' + (r.eventname||'—') + '</strong></td></tr>';
+                page += '<tr><td>Activity</td><td>' + (r.activity||'—') + '</td></tr>';
+                page += '<tr><td>Area</td><td>' + (r.area||'—') + '</td></tr>';
+                page += '<tr><td>Hours</td><td><strong>' + r.hours.toFixed(2) + '</strong></td></tr>';
+                if (r.comments) page += '<tr><td>Notes</td><td>' + r.comments + '</td></tr>';
+                page += '</table></div>';
+            });
+            var b1El = document.getElementById(day + '-break1');
+            var b2El = document.getElementById(day + '-break2');
+            var notesEl = document.getElementById(day + '-notes');
+            if ((b1El&&b1El.value)||(b2El&&b2El.value))
+                page += '<p style="font-size:12px;color:#555;margin:4px 0">Break 1: '+(b1El&&b1El.value?b1El.value:'—')+' hr &nbsp;|&nbsp; Break 2: '+(b2El&&b2El.value?b2El.value:'—')+' hr</p>';
+            if (notesEl&&notesEl.value.trim())
+                page += '<p style="font-size:12px;color:#555;margin:4px 0">Safety Notes: '+notesEl.value+'</p>';
+            page += '<p class="total">Daily Total: ' + dtot + ' hrs</p>';
+        });
+
+        // CSV section
+        var csvLines = [];
+        days.forEach(function(day) {
+            if (isDayOff(day)) return;
+            var dateStr = dayDates[day];
+            collectDayRows(day).forEach(function(r) {
+                var act = r.activity.replace(/,/g,';').replace(/\n/g,' ');
+                csvLines.push(employee+','+dateStr+','+r.hours.toFixed(2)+',,'+r.eventname+','+act+','+r.area);
+            });
+        });
+        if (csvLines.length > 0) {
+            page += '<div class="csv-section"><h2>Paste into Temp Tab</h2>';
+            page += '<div class="csv-box">Name,Date,Hours,Department Code,Event/Project,Details,Area\n' + csvLines.join('\n') + '</div>';
+            page += '<p class="note">(Department Code column is blank — fill in after pasting)</p></div>';
+        }
+
+        page += '</body></html>';
+
+        var win = window.open('', '_blank');
+        win.document.write(page);
+        win.document.close();
+
+        // Also send the email with raw data
         submitToEmail();
     }
 
