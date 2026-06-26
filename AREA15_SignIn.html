@@ -110,9 +110,12 @@
             .daily-total-row { text-align: right; font-weight: bold; font-size: 14px;
                 color: #0066cc; margin-top: 8px; padding-top: 8px;
                 border-top: 1px solid #c5d8f5; }
-            /* symmetrical button row - equal 8px gap between all three always */
+            /* button layout: Add Row + Mark as Day Off side by side, Delete below */
             .day-controls { padding: 0; display: flex; flex-direction: column;
                 margin-top: 10px; gap: 8px; }
+            .day-controls .btn-top-row { display: flex; gap: 8px; }
+            .day-controls .btn-top-row .add-btn,
+            .day-controls .btn-top-row .day-off-btn { flex: 1; margin: 0; }
             .add-btn, .delete-btn, .day-off-btn {
                 width: 100%; display: block; text-align: center; margin: 0; }
         }
@@ -120,7 +123,7 @@
 </head>
 <body>
     <h1>AREA15 Production Department Sign-In Sheet</h1>
-    <p style="text-align:right;font-size:11px;color:#aaa;margin:0 12px 8px;">v1.4</p>
+    <p style="text-align:right;font-size:11px;color:#aaa;margin:0 12px 8px;">v1.5</p>
 
     <div class="instructions">
         <strong>How to use:</strong><br>
@@ -316,9 +319,11 @@
                 // Mobile: card container
                 '<div class="mobile-cards" id="' + day + '-cards"></div>' +
                 '<div class="day-controls">' +
-                    '<button class="add-btn" id="' + day + '-add-btn" onclick="addRow(\'' + day + '\')">+ Add Row</button>' +
+                    '<div class="btn-top-row">' +
+                        '<button class="add-btn" id="' + day + '-add-btn" onclick="addRow(\'' + day + '\')">+ Add Row</button>' +
+                        '<button class="day-off-btn" id="' + day + '-off-btn" onclick="toggleDayOff(\'' + day + '\', this)">Mark as Day Off</button>' +
+                    '</div>' +
                     '<button class="delete-btn" id="' + day + '-delete-btn" onclick="deleteLastRow(\'' + day + '\')" style="display:none">Delete Last Row</button>' +
-                    '<button class="day-off-btn" id="' + day + '-off-btn" onclick="toggleDayOff(\'' + day + '\', this)">Mark as Day Off</button>' +
                 '</div>' +
                 '<div class="notes-row">' +
                     '<label for="' + day + '-notes">Daily Notes / Safety:</label>' +
@@ -884,9 +889,8 @@
             });
         });
         if (csvLines.length > 0) {
-            page += '<div class="csv-section"><h2>Paste into Temp Tab</h2>';
-            page += '<div class="csv-box">Name,Date,Hours,Department Code,Event/Project,Details,Area\n' + csvLines.join('\n') + '</div>';
-            page += '<p class="note">(Department Code column is blank — fill in after pasting)</p></div>';
+            // CSV block intentionally omitted from the employee-facing summary page
+            // It appears only in the email sent to management
         }
 
         page += '</body></html>';
