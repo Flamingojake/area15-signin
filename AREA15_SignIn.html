@@ -748,43 +748,39 @@
         var weekEnd   = days[6];
         var weeklyTotal = document.getElementById('weekly-total').textContent;
 
-        // ── Build plain text message (FormSubmit renders this cleanly) ────────
-        var msg = '';
-        msg += 'AREA15 Production Department Sign-In Sheet\n';
-        msg += '==========================================\n';
-        msg += 'Employee : ' + employee + '\n';
-        msg += 'Week of  : ' + weekStart + ' - ' + weekEnd + '\n';
-        msg += 'Weekly Total: ' + weeklyTotal + ' hrs\n\n';
+        // ── Build plain text message ──────────────────────────────────────────
+        // Use encoded line breaks so FormSubmit preserves spacing correctly.
+        var NL = '%0A';   // URL-encoded newline that survives FormSubmit processing
+        var lines = [];
+
+        lines.push('AREA15 Production Department Sign-In Sheet');
+        lines.push('Employee: ' + employee);
+        lines.push('Week of:  ' + weekStart + ' to ' + weekEnd);
+        lines.push('Weekly Total: ' + weeklyTotal + ' hrs');
+        lines.push('');
 
         days.forEach(function(day) {
-            var isOff = isDayOff(day);
+            if (isDayOff(day)) return; // skip day-off days entirely to keep it clean
             var dtotEl = document.getElementById(day + '-daily-total');
             var dtot   = dtotEl ? dtotEl.textContent : '0.00';
-
-            msg += '------------------------------------------\n';
-            msg += day + '\n';
-            if (isOff) {
-                msg += '  Day off - no hours recorded.\n\n';
-                return;
-            }
-            msg += 'Daily Total: ' + dtot + ' hrs\n\n';
+            lines.push('--- ' + day + ' --- (' + dtot + ' hrs)');
 
             collectDayRows(day).forEach(function(r) {
-                msg += '  Project/Event : ' + (r.eventname || '—') + '\n';
-                msg += '  Activity      : ' + (r.activity  || '—') + '\n';
-                msg += '  Area          : ' + (r.area      || '—') + '\n';
-                msg += '  Hours         : ' + r.hours.toFixed(2) + '\n';
-                if (r.comments) msg += '  Comments      : ' + r.comments + '\n';
-                msg += '\n';
+                lines.push('  Event:    ' + (r.eventname || '—'));
+                lines.push('  Activity: ' + (r.activity  || '—'));
+                lines.push('  Area:     ' + (r.area      || '—'));
+                lines.push('  Hours:    ' + r.hours.toFixed(2));
+                if (r.comments) lines.push('  Notes:    ' + r.comments);
+                lines.push('');
             });
 
             var b1El = document.getElementById(day + '-break1');
             var b2El = document.getElementById(day + '-break2');
-            if (b1El && b1El.value) msg += '  Break 1: ' + b1El.value + ' hr(s)\n';
-            if (b2El && b2El.value) msg += '  Break 2: ' + b2El.value + ' hr(s)\n';
+            if (b1El && b1El.value) lines.push('  Break 1: ' + b1El.value + ' hr(s)');
+            if (b2El && b2El.value) lines.push('  Break 2: ' + b2El.value + ' hr(s)');
             var notesEl = document.getElementById(day + '-notes');
-            if (notesEl && notesEl.value.trim()) msg += '  Notes: ' + notesEl.value + '\n';
-            msg += '\n';
+            if (notesEl && notesEl.value.trim()) lines.push('  Safety Notes: ' + notesEl.value);
+            lines.push('');
         });
 
         // ── CSV paste block ───────────────────────────────────────────────────
@@ -799,13 +795,13 @@
             });
         });
         if (csvLines.length > 0) {
-            msg += '==========================================\n';
-            msg += 'PASTE INTO TEMP TAB (copy rows below):\n';
-            msg += '==========================================\n';
-            msg += 'Name,Date,Hours,Department Code,Event/Project,Details,Area\n';
-            msg += csvLines.join('\n') + '\n';
-            msg += '(Department Code column is blank - fill in after pasting)\n';
+            lines.push('--- PASTE INTO TEMP TAB ---');
+            lines.push('Name,Date,Hours,Department Code,Event/Project,Details,Area');
+            csvLines.forEach(function(l) { lines.push(l); });
+            lines.push('(Department Code column is blank - fill in after pasting)');
         }
+
+        var msg = lines.join('\r\n');
 
         var form = document.createElement('form');
         form.method = 'POST';
