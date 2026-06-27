@@ -3,149 +3,212 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AREA15 PROD DEPT Digital Sign-In</title>
+    <title>AREA15 Production, Time Allotments</title>
     <style>
+        /* ── THEME VARIABLES ───────────────────────────────────────── */
+        body {
+            --bg:           #000;
+            --bg2:          #111;
+            --bg3:          #1a1a1a;
+            --bg-inner:     #0d1a2a;
+            --bg-controls:  #111;
+            --card-bg:      #1a1a1a;
+            --card-border:  #1a3a5c;
+            --text:         #eee;
+            --text-muted:   #888;
+            --text-label:   #888;
+            --input-bg:     #1a1a1a;
+            --input-border: #333;
+            --input-text:   #eee;
+            --header-bg:    #0066cc;
+            --accent:       #4da6ff;
+            --instr-bg:     #001a3a;
+            --instr-text:   #cce0ff;
+            --weekly-bg:    #001a3a;
+            --day-border:   #1a3a5c;
+            --sep:          #1a3a5c;
+            --note-bg:      #332b00;
+            --note-text:    #ffc107;
+            --note-border:  #ffc107;
+            --select-bg:    #222;
+            --select-text:  #eee;
+        }
+        body.light-mode {
+            --bg:           #f0f2f5;
+            --bg2:          #ffffff;
+            --bg3:          #f8f9fa;
+            --bg-inner:     #eef4ff;
+            --bg-controls:  #ffffff;
+            --card-bg:      #ffffff;
+            --card-border:  #c5d8f5;
+            --text:         #222;
+            --text-muted:   #555;
+            --text-label:   #555;
+            --input-bg:     #ffffff;
+            --input-border: #ccc;
+            --input-text:   #222;
+            --header-bg:    #0066cc;
+            --accent:       #0066cc;
+            --instr-bg:     #e6f0ff;
+            --instr-text:   #1a3a5c;
+            --weekly-bg:    #e6f0ff;
+            --day-border:   #c5d8f5;
+            --sep:          #c5d8f5;
+            --note-bg:      #fff3cd;
+            --note-text:    #856404;
+            --note-border:  #ffc107;
+            --select-bg:    #ffffff;
+            --select-text:  #222;
+        }
+
         /* ── BASE (shared) ─────────────────────────────────────────── */
         * { box-sizing: border-box; }
-        body { font-family: Arial, sans-serif; margin: 0; background: #000; color: #eee; }
-        input, select, textarea { width: 100%; font-family: Arial, sans-serif; font-size: 15px; color: #222; }
+        body { font-family: Arial, sans-serif; margin: 0;
+            background: var(--bg); color: var(--text); }
+        input, select, textarea { width: 100%; font-family: Arial, sans-serif;
+            font-size: 15px; color: var(--input-text);
+            background: var(--input-bg); border-color: var(--input-border); }
         button { cursor: pointer; border: none; font-family: Arial, sans-serif; }
         .error { border: 2px solid #ff4444 !important; background: #3a0000 !important; color: #ffaaaa !important; }
-        .day-off-banner { background: #332b00; color: #ffc107; padding: 12px;
-            text-align: center; font-weight: bold; border: 2px solid #ffc107; margin: 10px 0;
+        .day-off-banner { background: var(--note-bg); color: var(--note-text); padding: 12px;
+            text-align: center; font-weight: bold; border: 2px solid var(--note-border); margin: 10px 0;
             border-radius: 6px; }
-        .weekly-total { font-weight: bold; text-align: center; background: #001a3a;
-            border: 3px solid #0066cc; border-radius: 8px; color: #eee; }
-        .instructions { background: #001a3a; border-radius: 8px; color: #cce0ff; }
+        .weekly-total { font-weight: bold; text-align: center; background: var(--weekly-bg);
+            border: 3px solid #0066cc; border-radius: 8px; color: var(--text); }
+        .instructions { background: var(--instr-bg); border-radius: 8px; color: var(--instr-text); }
+
+        /* ── THEME TOGGLE ───────────────────────────────────────────── */
+        .theme-toggle { display: flex; align-items: center; gap: 8px;
+            font-size: 12px; color: var(--text-muted); cursor: pointer;
+            padding: 4px 10px; background: var(--bg2); border-radius: 20px;
+            border: 1px solid var(--card-border); user-select: none; }
+        .theme-toggle input[type=checkbox] { width: auto; cursor: pointer; accent-color: #0066cc; }
+        .theme-row { display: flex; justify-content: flex-end; padding: 8px 12px 0; }
 
         /* ── DESKTOP (≥ 700px) ────────────────────────────────────── */
         @media (min-width: 700px) {
-            body { margin: 20px; background: #000; color: #eee; }
-            h1 { font-size: 1.6em; margin-bottom: 4px; color: #fff; }
-            .instructions { padding: 15px; margin-bottom: 20px; background: #001a3a;
-                border-radius: 8px; color: #cce0ff; }
+            body { margin: 20px; }
+            h1 { font-size: 1.6em; margin-bottom: 4px; color: var(--text); }
+            .instructions { padding: 15px; margin-bottom: 20px; }
             .top-controls { margin-bottom: 16px; display: flex; flex-wrap: wrap; gap: 8px;
-                padding: 12px; background: #111; border-radius: 8px; border: 1px solid #333; }
+                padding: 12px; background: var(--bg-controls);
+                border-radius: 8px; border: 1px solid var(--card-border); }
             .top-controls select { font-size: 14px; padding: 8px; border: 2px solid #0066cc;
-                border-radius: 6px; background: #222; color: #eee; }
+                border-radius: 6px; background: var(--select-bg); color: var(--select-text); }
             .top-controls .btn-row { display: flex; gap: 8px; }
             button { padding: 10px 14px; margin: 0; font-size: 14px; border-radius: 6px; }
             .submit-btn { background: #28a745; color: white; font-weight: bold; }
             .save-btn  { background: #0066cc; color: white; }
             .load-btn  { background: #555;    color: white; }
-            .day { border: 1.5px solid #1a3a5c; margin-bottom: 20px;
-                background: #111; border-radius: 12px; color: #eee; overflow: hidden; }
+            .day { border: 1.5px solid var(--day-border); margin-bottom: 20px;
+                background: var(--bg2); border-radius: 12px; color: var(--text); overflow: hidden; }
             .day h2 { margin: 0; padding: 12px 16px; font-size: 1.1em;
-                color: white; background: #0066cc; }
-            .day-inner { padding: 15px; background: #0d1a2a; }
+                color: white; background: var(--header-bg); }
+            .day-inner { padding: 15px; background: var(--bg-inner); }
             .day-controls { margin-top: 10px; display: flex; gap: 8px; flex-wrap: wrap; }
             .btn-top-row { display: flex; gap: 8px; }
             .day-off-btn  { background: #008800; color: white; }
             .delete-btn   { background: #cc0000; color: white; }
             .add-btn      { background: #0066cc; color: white; }
-            /* desktop table */
             table { width: 100%; border-collapse: collapse; margin-bottom: 12px; }
-            th, td { border: 1px solid #1a3a5c; padding: 8px; text-align: left;
-                vertical-align: top; color: #eee; }
+            th, td { border: 1px solid var(--card-border); padding: 8px;
+                text-align: left; vertical-align: top; color: var(--text); }
             th { background: #0066cc; color: white; font-size: 13px; }
             td input, td select, td textarea { font-size: 14px; padding: 6px;
-                background: #1a1a1a; color: #eee; border: 1px solid #333;
-                border-radius: 4px; }
+                background: var(--input-bg); color: var(--input-text);
+                border: 1px solid var(--input-border); border-radius: 4px; }
             .mobile-card { display: none; }
             .desktop-table { display: table; }
             .weekly-total { font-size: 1.4em; margin: 24px 0; padding: 15px; }
             .notes-row { margin-top: 10px; }
-            .notes-row label { font-weight: bold; font-size: 13px; color: #888;
+            .notes-row label { font-weight: bold; font-size: 13px; color: var(--text-label);
                 text-transform: uppercase; display: block; margin-bottom: 4px; }
             .notes-row textarea { width: 100%; font-size: 14px; padding: 8px;
-                background: #1a1a1a; color: #eee; border: 1px solid #333;
-                border-radius: 6px; }
+                background: var(--input-bg); color: var(--input-text);
+                border: 1px solid var(--input-border); border-radius: 6px; }
             .break-row { font-size: 13px; margin-top: 10px; display: flex;
-                gap: 20px; align-items: center; color: #888; }
+                gap: 20px; align-items: center; color: var(--text-muted); }
             .break-row label { font-size: 11px; font-weight: bold;
-                text-transform: uppercase; color: #888; margin-right: 6px; }
+                text-transform: uppercase; color: var(--text-label); margin-right: 6px; }
             .break-row input { width: 70px; font-size: 14px; padding: 6px;
-                background: #1a1a1a; color: #eee; border: 1px solid #333;
-                border-radius: 6px; text-align: center; }
-            .day-off-banner { background: #332b00; color: #ffc107;
-                border: 2px solid #ffc107; }
+                background: var(--input-bg); color: var(--input-text);
+                border: 1px solid var(--input-border); border-radius: 6px; text-align: center; }
+            .day-off-banner { background: var(--note-bg); color: var(--note-text);
+                border: 2px solid var(--note-border); }
             .daily-total-row { margin-top: 10px !important; padding-top: 8px !important;
-                margin-bottom: 4px !important; border-top: 1px solid #1a3a5c !important;
-                color: #4da6ff !important; font-weight: bold; text-align: right; }
+                margin-bottom: 4px !important; border-top: 1px solid var(--sep) !important;
+                color: var(--accent) !important; font-weight: bold; text-align: right; }
         }
 
         /* ── MOBILE (< 700px) ────────────────────────────────────── */
         @media (max-width: 699px) {
-            body { margin: 0; background: #000; }
+            body { margin: 0; }
             h1 { font-size: 1.2em; margin: 0; padding: 16px 16px 10px;
                 background: #0066cc; color: white; }
             .instructions { margin: 12px; padding: 12px; font-size: 13px; border-radius: 8px; }
             .top-controls { display: flex; flex-wrap: wrap; gap: 8px;
-                padding: 12px; background: #111; border-bottom: 1px solid #333; }
+                padding: 12px; background: var(--bg-controls); border-bottom: 1px solid var(--card-border); }
             .top-controls select { font-size: 16px; padding: 10px; border: 2px solid #0066cc;
-                border-radius: 8px; background: #222; color: #eee; flex: 1 1 100%; }
+                border-radius: 8px; background: var(--select-bg); color: var(--select-text); flex: 1 1 100%; }
             button { padding: 12px 10px; font-size: 14px; border-radius: 8px;
                 font-weight: bold; flex: 1; }
             .submit-btn { background: #28a745; color: white; font-size: 15px; padding: 14px; }
             .save-btn  { background: #0066cc; color: white; }
             .load-btn  { background: #555;    color: white; }
-            .day-off-btn  { background: #008800; color: white; width: 100%; display: block;
-                margin-top: 8px; }
+            .day-off-btn  { background: #008800; color: white; width: 100%; display: block; margin-top: 8px; }
             .delete-btn   { background: #cc0000; color: white; }
-            .add-btn      { background: #0066cc; color: white; width: 100%; display: block;
-                margin-top: 8px; }
-            .day { margin: 8px 12px; background: #111; border-radius: 12px;
-                box-shadow: 0 2px 8px rgba(0,0,0,0.5); overflow: hidden;
-                border: 1.5px solid #1a3a5c; }
+            .add-btn      { background: #0066cc; color: white; width: 100%; display: block; margin-top: 8px; }
+            .day { margin: 8px 12px; background: var(--bg2); border-radius: 12px;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.3); overflow: hidden;
+                border: 1.5px solid var(--day-border); }
             .day h2 { margin: 0; padding: 14px 16px; background: #0066cc; color: white;
                 font-size: 1em; border-radius: 12px 12px 0 0; }
-            .day-inner { padding: 12px; background: #0d1a2a; border-radius: 0 0 12px 12px; }
-            /* mobile card per row */
-            .desktop-table { display: none; } /* hide table on mobile */
-            .mobile-card { display: block; background: #1a1a1a; border: 1px solid #1a3a5c;
+            .day-inner { padding: 12px; background: var(--bg-inner); border-radius: 0 0 12px 12px; }
+            .desktop-table { display: none; }
+            .mobile-card { display: block; background: var(--card-bg); border: 1px solid var(--card-border);
                 border-radius: 10px; padding: 12px; margin-bottom: 10px; }
             .mobile-card .field-group { margin-bottom: 10px; }
             .mobile-card .field-label { font-size: 11px; font-weight: bold;
-                text-transform: uppercase; color: #888; margin-bottom: 3px; }
+                text-transform: uppercase; color: var(--text-label); margin-bottom: 3px; }
             .mobile-card select, .mobile-card input[type=text],
             .mobile-card input[type=number], .mobile-card textarea {
-                font-size: 16px; padding: 10px; border: 1.5px solid #333;
-                border-radius: 8px; background: #222; color: #eee; }
+                font-size: 16px; padding: 10px; border: 1.5px solid var(--input-border);
+                border-radius: 8px; background: var(--input-bg); color: var(--input-text); }
             .mobile-card .hours-row { display: flex; gap: 10px; align-items: flex-start; }
             .mobile-card .hours-row .field-group { flex: 1; }
-            .mobile-card .delete-row-btn { background: none; border: none;
-                color: #cc0000; font-size: 13px; padding: 4px 0; margin-top: 4px; cursor: pointer; }
             .mobile-card input[type=text].eventname-other,
             .mobile-card input[type=text].activity-other { margin-top: 6px; }
             .weekly-total { font-size: 1.2em; margin: 16px 12px; padding: 14px; }
             .notes-row { margin-top: 10px; }
-            .notes-row label { font-size: 12px; font-weight: bold; color: #888;
+            .notes-row label { font-size: 12px; font-weight: bold; color: var(--text-label);
                 text-transform: uppercase; display: block; margin-bottom: 4px; }
-            .notes-row textarea { font-size: 15px; padding: 10px; border: 1.5px solid #333;
-                border-radius: 8px; background: #222; color: #eee; }
-            .break-row { display: flex; gap: 12px; margin-top: 10px; font-size: 13px; color: #aaa; }
+            .notes-row textarea { font-size: 15px; padding: 10px; border: 1.5px solid var(--input-border);
+                border-radius: 8px; background: var(--input-bg); color: var(--input-text); }
+            .break-row { display: flex; gap: 12px; margin-top: 10px; font-size: 13px; color: var(--text-muted); }
             .break-row .break-field { flex: 1; }
             .break-row label { display: block; font-size: 11px; font-weight: bold;
-                text-transform: uppercase; color: #888; margin-bottom: 3px; }
-            .break-row input { font-size: 16px; padding: 8px; border: 1.5px solid #333;
-                border-radius: 8px; text-align: center; background: #222; color: #eee; }
+                text-transform: uppercase; color: var(--text-label); margin-bottom: 3px; }
+            .break-row input { font-size: 16px; padding: 8px; border: 1.5px solid var(--input-border);
+                border-radius: 8px; text-align: center;
+                background: var(--input-bg); color: var(--input-text); }
             .daily-total-row { text-align: right; font-weight: bold; font-size: 14px;
-                color: #4da6ff; margin-top: 8px; padding-top: 8px; margin-bottom: 8px;
-                border-top: 1px solid #1a3a5c; }
-            /* button layout: Add Row + Mark as Day Off side by side, Delete below */
-            .day-controls { padding: 0; display: flex; flex-direction: column;
-                margin-top: 10px; gap: 8px; }
-            .day-controls .btn-top-row { display: flex; gap: 8px; }
-            .day-controls .btn-top-row .add-btn,
-            .day-controls .btn-top-row .day-off-btn { flex: 1; margin: 0; }
-            .add-btn, .delete-btn, .day-off-btn {
-                width: 100%; display: block; text-align: center; margin: 0; }
+                color: var(--accent); margin-top: 8px; padding-top: 8px; margin-bottom: 8px;
+                border-top: 1px solid var(--sep); }
+            .btn-top-row { display: flex; gap: 8px; }
+            .day-controls { padding: 0; display: flex; flex-direction: column; margin-top: 10px; gap: 8px; }
+            .add-btn, .delete-btn, .day-off-btn { width: 100%; display: block; text-align: center; margin: 0; }
         }
     </style>
 </head>
 <body>
-    <h1>AREA15 Production Department Sign-In Sheet</h1>
-    <p style="text-align:right;font-size:11px;color:#555;margin:0 12px 8px;">v3.5</p>
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;">
+        <h1 style="margin:0;flex:1;">AREA15 Production, Time Allotments</h1>
+        <label class="theme-toggle" style="flex-shrink:0;margin:8px 12px;">
+            <input type="checkbox" id="theme-toggle" onchange="toggleTheme(this)">
+            ☀ Light Mode
+        </label>
+    </div>
+    <p style="text-align:right;font-size:11px;color:#555;margin:0 12px 4px;">v3.8</p>
 
     <div class="instructions">
         <strong>How to use:</strong><br>
@@ -221,6 +284,25 @@
     </div>
 
 <script>
+    // ── THEME TOGGLE ────────────────────────────────────────────────────────
+    function toggleTheme(checkbox) {
+        if (checkbox.checked) {
+            document.body.classList.add('light-mode');
+            localStorage.setItem('area15_theme', 'light');
+        } else {
+            document.body.classList.remove('light-mode');
+            localStorage.setItem('area15_theme', 'dark');
+        }
+    }
+    // Restore saved preference on load
+    (function() {
+        var saved = localStorage.getItem('area15_theme');
+        if (saved === 'light') {
+            document.body.classList.add('light-mode');
+            var cb = document.getElementById('theme-toggle');
+            if (cb) cb.checked = true;
+        }
+    })();
     // ── PRINT VIEW ──────────────────────────────────────────────────────────
     // When the page is opened with ?print= in the URL (from the email link),
     // render a clean printable summary and hide the form entirely.
